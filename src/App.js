@@ -29,28 +29,34 @@ import {
   onSnapshot, 
   deleteDoc, 
   doc, 
-  updateDoc, 
-  where,
-  orderBy
+  updateDoc
 } from 'firebase/firestore';
 
 // --- Firebase Initialization ---
-// 注意：在您的正式專案中，請將下方的 config 替換為您自己的 Firebase Config
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-  apiKey: "AIzaSyAuAZSgs-oUS7hmfsDKZyQNqpbSCiOUfik",
-  authDomain: "accounting-c6599.firebaseapp.com",
-  projectId: "accounting-c6599",
-  storageBucket: "accounting-c6599.firebasestorage.app",
-  messagingSenderId: "53340382920",
-  appId: "1:53340382920:web:ada671f7d3464ace5867fd"
+// ★★★ 請將這裡的 Config 換成你自己的 (我使用了你提供的 firebase.js 內容) ★★★
+const firebaseConfig = {
+  apiKey: "AIzaSyB8HJSxbUYWPWt_LKoZMzQdSiA1gQMJvlA",
+  authDomain: "tourism-planning-e7e44.firebaseapp.com",
+  projectId: "tourism-planning-e7e44",
+  storageBucket: "tourism-planning-e7e44.firebasestorage.app",
+  messagingSenderId: "725312679774",
+  appId: "1:725312679774:web:93be49bdc30a4c5a71a9cf"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+// 防止重複初始化
+let app;
+let auth;
+let db;
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+} catch (e) {
+    console.error("Firebase init error", e);
+}
 
 // --- 類別定義 ---
+
 const DEFAULT_EXPENSE_CATEGORIES = {
     '飲食': { subs: [], includeInBudget: true },
     '居家': { subs: ['孝親費'], includeInBudget: false }, 
@@ -129,7 +135,7 @@ const parseCSV = (csv) => {
     }
 
     const obj = {
-      date: new Date(year, month, day).toISOString(), // 存 ISO 字串方便 Firestore
+      date: new Date(year, month, day).toISOString(), 
       category: category, 
       majorCategory: majorCategory, 
       hasSub: !!currentline[2], 
@@ -149,7 +155,7 @@ export default function ExpenseApp() {
   const [user, setUser] = useState(null);
   const [transactions, setTransactions] = useState([]); 
   const [currentView, setCurrentView] = useState('daily'); 
-  const [currentDate, setCurrentDate] = useState(new Date()); // 預設今天
+  const [currentDate, setCurrentDate] = useState(new Date()); 
   const [statsRange, setStatsRange] = useState('month'); 
   const [statsType, setStatsType] = useState('expense'); 
   
@@ -162,7 +168,7 @@ export default function ExpenseApp() {
 
   const [detailConfig, setDetailConfig] = useState({ category: '', type: 'expense', parentView: 'daily', range: 'month' });
 
-  // UI States
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -185,33 +191,25 @@ export default function ExpenseApp() {
   const [tempBudget, setTempBudget] = useState('');
 
   // --- Firebase Logic ---
-
-  // 1. 監聽登入狀態
   useEffect(() => {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
           setUser(currentUser);
-          if (!currentUser) {
-              setTransactions([]); // 登出清空
-          }
+          if (!currentUser) setTransactions([]); 
       });
       return () => unsubscribe();
   }, []);
 
-  // 2. 監聽 Firestore 資料 (Real-time Sync)
   useEffect(() => {
       if (!user) return;
-
-      // 使用系統規定的路徑: /artifacts/{appId}/users/{userId}/transactions
-      const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`;
-      const q = query(collection(db, collectionPath));
+      const collectionRef = collection(db, 'users', user.uid, 'transactions');
+      const q = query(collectionRef); 
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const transData = snapshot.docs.map(doc => ({
               id: doc.id,
               ...doc.data(),
-              date: new Date(doc.data().date) // 轉回 Date 物件
+              date: new Date(doc.data().date)
           }));
-          // Client-side sort
           transData.sort((a, b) => b.date - a.date);
           setTransactions(transData);
       });
@@ -219,21 +217,47 @@ export default function ExpenseApp() {
       return () => unsubscribe();
   }, [user]);
 
-  // 3. 初始化類別
+  // Load Settings from LocalStorage
   useEffect(() => {
-    setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
-    setIncomeCategories(DEFAULT_INCOME_CATEGORIES);
+      const savedEx = localStorage.getItem('expenseCategories');
+      if (savedEx) setExpenseCategories(JSON.parse(savedEx));
+      else setExpenseCategories(DEFAULT_EXPENSE_CATEGORIES);
+
+      const savedIn = localStorage.getItem('incomeCategories');
+      if (savedIn) setIncomeCategories(JSON.parse(savedIn));
+      else setIncomeCategories(DEFAULT_INCOME_CATEGORIES);
+      
+      const savedBudgets = localStorage.getItem('monthlyBudgets');
+      if (savedBudgets) setMonthlyBudgets(JSON.parse(savedBudgets));
+      
+      const savedDefault = localStorage.getItem('defaultBudget');
+      if (savedDefault) setDefaultBudget(parseInt(savedDefault));
   }, []);
 
-  // --- 資料庫操作 ---
+  useEffect(() => {
+      if (Object.keys(expenseCategories).length > 0) 
+        localStorage.setItem('expenseCategories', JSON.stringify(expenseCategories));
+  }, [expenseCategories]);
+
+  useEffect(() => {
+      if (Object.keys(incomeCategories).length > 0)
+        localStorage.setItem('incomeCategories', JSON.stringify(incomeCategories));
+  }, [incomeCategories]);
+  
+  useEffect(() => {
+      localStorage.setItem('monthlyBudgets', JSON.stringify(monthlyBudgets));
+  }, [monthlyBudgets]);
+
+  useEffect(() => {
+      localStorage.setItem('defaultBudget', defaultBudget.toString());
+  }, [defaultBudget]);
 
   const handleGoogleLogin = async () => {
       try {
-          const provider = new GoogleAuthProvider();
-          await signInWithPopup(auth, provider);
+          await signInWithPopup(auth, new GoogleAuthProvider());
       } catch (error) {
           console.error("Login failed", error);
-          alert("登入失敗，請重試");
+          alert("登入失敗");
       }
   };
 
@@ -241,38 +265,23 @@ export default function ExpenseApp() {
       await signOut(auth);
   };
 
-  const saveToFirestore = async (transactionData) => {
-      if (!user) {
-          alert("請先登入以儲存資料");
-          return;
-      }
-      const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`;
+  const saveToFirestore = async (data) => {
+      if (!user) return;
+      const collectionRef = collection(db, 'users', user.uid, 'transactions');
+      const saveData = { ...data, date: data.date.toISOString() };
       
-      // 確保日期存為 ISO string
-      const dataToSave = {
-          ...transactionData,
-          date: transactionData.date.toISOString()
-      };
-
-      if (transactionData.id) {
-          // Update
-          const docRef = doc(db, collectionPath, transactionData.id);
-          // Remove id from data payload
-          const { id, ...updateData } = dataToSave;
-          await updateDoc(docRef, updateData);
+      if (data.id) {
+          const { id, ...rest } = saveData;
+          await updateDoc(doc(db, 'users', user.uid, 'transactions', id), rest);
       } else {
-          // Add
-          await addDoc(collection(db, collectionPath), dataToSave);
+          await addDoc(collectionRef, saveData);
       }
   };
 
   const deleteFromFirestore = async (id) => {
       if (!user) return;
-      const collectionPath = `artifacts/${appId}/users/${user.uid}/transactions`;
-      await deleteDoc(doc(db, collectionPath, id));
+      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
   };
-
-  // --- 計算邏輯 ---
 
   const currentMonthBudget = useMemo(() => {
       const key = getMonthKey(currentDate);
@@ -286,26 +295,18 @@ export default function ExpenseApp() {
           const isYearly = detailConfig.range === 'year';
           const sameYear = t.date.getFullYear() === currentDate.getFullYear();
           const sameMonth = t.date.getMonth() === currentDate.getMonth();
-          
           let dateMatch = false;
           if (isAll) dateMatch = true;
           else if (isYearly) dateMatch = sameYear;
           else dateMatch = (sameYear && sameMonth);
-
-          return dateMatch &&
-                 t.majorCategory === detailConfig.category &&
-                 t.type === detailConfig.type;
+          return dateMatch && t.majorCategory === detailConfig.category && t.type === detailConfig.type;
       }
-
       if (currentView === 'stats') {
          if (statsRange === 'all') return true;
          if (statsRange === 'year') return t.date.getFullYear() === currentDate.getFullYear();
-         return t.date.getFullYear() === currentDate.getFullYear() &&
-                t.date.getMonth() === currentDate.getMonth();
+         return t.date.getFullYear() === currentDate.getFullYear() && t.date.getMonth() === currentDate.getMonth();
       }
-
-      return t.date.getFullYear() === currentDate.getFullYear() &&
-             t.date.getMonth() === currentDate.getMonth();
+      return t.date.getFullYear() === currentDate.getFullYear() && t.date.getMonth() === currentDate.getMonth();
     });
   }, [transactions, currentDate, statsRange, currentView, detailConfig]);
 
@@ -398,12 +399,10 @@ export default function ExpenseApp() {
   const statsData = useMemo(() => {
     const groupData = {}; 
     let total = 0;
-
     filteredTransactions.forEach(t => {
       if (t.type === statsType) {
         const major = t.majorCategory;
         const sub = t.category !== t.majorCategory ? t.category : '其他';
-
         if (!groupData[major]) groupData[major] = { total: 0, subs: {} };
         groupData[major].total += t.amount;
         if (!groupData[major].subs[sub]) groupData[major].subs[sub] = 0;
@@ -411,18 +410,14 @@ export default function ExpenseApp() {
         total += t.amount;
       }
     });
-
     const chartData = Object.keys(groupData).map(major => ({
       name: major,
       value: groupData[major].total,
       subs: Object.keys(groupData[major].subs).map(s => ({ name: s, value: groupData[major].subs[s] })).sort((a,b)=>b.value-a.value),
       ratio: total > 0 ? (groupData[major].total / total) : 0
     })).sort((a, b) => b.value - a.value);
-
     return { total, chartData };
   }, [filteredTransactions, statsType]);
-
-  // --- 操作函數 ---
 
   const changeMonth = (offset) => {
     const d = new Date(currentDate);
@@ -443,45 +438,28 @@ export default function ExpenseApp() {
   const saveSpecificMonthBudget = () => {
       const amount = parseInt(tempBudget) || 0;
       const key = getMonthKey(currentDate);
-      setMonthlyBudgets(prev => ({
-          ...prev,
-          [key]: amount
-      }));
+      setMonthlyBudgets(prev => ({ ...prev, [key]: amount }));
       setIsBudgetEditOpen(false);
   };
 
-  const updateDefaultBudget = (val) => {
-      setDefaultBudget(parseInt(val) || 0);
-  };
-
-  const updateMonthlyBudget = (val) => {
+  const updateDefaultBudget = (val) => setDefaultBudget(parseInt(val) || 0);
+  const updateMonthlyBudget = (val) => { 
       const key = getMonthKey(currentDate);
-      setMonthlyBudgets(prev => ({
-          ...prev,
-          [key]: parseInt(val) || 0
-      }));
+      setMonthlyBudgets(prev => ({ ...prev, [key]: parseInt(val) || 0 }));
   };
 
   const handleToggleCategoryBudgetRule = (majorCat) => {
       const newStatus = !expenseCategories[majorCat].includeInBudget;
       setExpenseCategories(prev => ({
           ...prev,
-          [majorCat]: {
-              ...prev[majorCat],
-              includeInBudget: newStatus
-          }
+          [majorCat]: { ...prev[majorCat], includeInBudget: newStatus }
       }));
-      // Note: 在雲端版，這裡不會自動更新所有歷史資料的 includeInBudget，
-      // 因為那需要大量寫入 Firestore。
-      // 若需同步，可能需要遍歷更新，或是在讀取時動態判斷。
-      // 目前這裡僅更新本地設定，新增時會參考。
   };
 
   const handleSaveTransaction = async () => {
     const amount = parseInt(formData.amount);
     if (!amount) return;
 
-    // 本地設定同步更新 (UX優化)
     const currentSettings = formData.type === 'expense' ? expenseCategories : incomeCategories;
     const setSettings = formData.type === 'expense' ? setExpenseCategories : setIncomeCategories;
     const major = formData.majorCategory;
@@ -493,7 +471,7 @@ export default function ExpenseApp() {
     }
 
     const transactionData = {
-      id: editingId, // null for new
+      id: editingId, 
       date: new Date(formData.date),
       category: sub || major,
       majorCategory: major,
@@ -556,12 +534,10 @@ export default function ExpenseApp() {
   };
 
   const handleOpenAdd = () => {
-    if (!user) { alert("請先在設定頁登入"); return; }
+    if (!user) { alert("請先登入 (設定頁面)"); return; }
     setEditingId(null);
     setFormData({ amount: '', majorCategory: '飲食', subCategory: '', type: 'expense', date: formatDateForInput(new Date()), note: '', includeInBudget: true });
-    setIsCategorySelectorOpen(false); 
-    setIsSubCategorySelectorOpen(false);
-    setIsDeleteConfirming(false);
+    setIsCategorySelectorOpen(false); setIsSubCategorySelectorOpen(false); setIsDeleteConfirming(false);
     setIsModalOpen(true);
   };
 
@@ -569,57 +545,33 @@ export default function ExpenseApp() {
     setEditingId(t.id);
     const isSub = t.hasSub && t.category !== t.majorCategory;
     setFormData({ 
-        amount: t.amount, 
-        majorCategory: t.majorCategory, 
-        subCategory: isSub ? t.category : '', 
-        type: t.type, 
-        date: formatDateForInput(t.date), 
-        note: t.note,
-        includeInBudget: t.includeInBudget
+        amount: t.amount, majorCategory: t.majorCategory, subCategory: isSub ? t.category : '', type: t.type, 
+        date: formatDateForInput(t.date), note: t.note, includeInBudget: t.includeInBudget
     });
-    setIsCategorySelectorOpen(false);
-    setIsSubCategorySelectorOpen(false);
-    setIsDeleteConfirming(false);
+    setIsCategorySelectorOpen(false); setIsSubCategorySelectorOpen(false); setIsDeleteConfirming(false);
     setIsModalOpen(true);
   };
 
   const handleSelectMajorCategory = (cat) => {
       const settings = formData.type === 'expense' ? expenseCategories : incomeCategories;
       const defaultInclude = settings[cat]?.includeInBudget ?? true;
-      
-      setFormData(prev => ({
-          ...prev, 
-          majorCategory: cat, 
-          subCategory: '',
-          includeInBudget: defaultInclude
-      }));
+      setFormData(prev => ({ ...prev, majorCategory: cat, subCategory: '', includeInBudget: defaultInclude }));
       setIsCategorySelectorOpen(false);
-      
-      if (settings[cat]?.subs?.length > 0) {
-          setIsSubCategorySelectorOpen(true);
-      } else {
-          setIsSubCategorySelectorOpen(false);
-      }
+      if (settings[cat]?.subs?.length > 0) setIsSubCategorySelectorOpen(true);
+      else setIsSubCategorySelectorOpen(false);
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (!user) { alert("請先登入"); return; }
-
     const reader = new FileReader();
     reader.onload = async (evt) => {
         const text = evt.target.result;
         const newData = parseCSV(text);
-        // Upload all to Firestore
         let count = 0;
-        // Batch upload or loop? Loop for simplicity here, but batch is better for large files.
-        // Simulating batch by just looping.
         for (const item of newData) {
-            // We create new records, ignore ID from CSV to avoid conflicts or use it if needed.
-            // Here we let Firestore generate ID.
             const { id, ...data } = item; 
-            // Firestore needs date object or ISO string
             await saveToFirestore({ ...data, date: new Date(data.date) });
             count++;
         }
@@ -630,16 +582,12 @@ export default function ExpenseApp() {
 
   const handleGoToDetail = (category, type) => {
       let range = 'month';
-      if (currentView === 'stats') {
-          range = statsRange;
-      }
+      if (currentView === 'stats') range = statsRange;
       setDetailConfig({ category, type, parentView: currentView, range });
       setCurrentView('categoryDetail');
   };
 
-  const getCurrentCategorySettings = () => {
-      return formData.type === 'expense' ? expenseCategories : incomeCategories;
-  };
+  const getCurrentCategorySettings = () => formData.type === 'expense' ? expenseCategories : incomeCategories;
 
   const shouldShowSubCategory = useMemo(() => {
       if (!formData.majorCategory) return false;
@@ -662,7 +610,6 @@ export default function ExpenseApp() {
                           </button>
                       )}
                       {type === 'income' && <div className="mr-3 text-teal-500"><TrendingUp size={24}/></div>}
-                      
                       <div>
                           <div className="flex items-center">
                               <div className="scale-75 -ml-1">{getIcon(cat)}</div>
@@ -677,13 +624,7 @@ export default function ExpenseApp() {
                   </div>
                   <div className="flex items-center space-x-1">
                       <button className="p-2 text-gray-300 hover:text-gray-500" onClick={() => {
-                          setCategoryForm({ 
-                              major: cat, 
-                              subs: [...categories[cat].subs], 
-                              includeInBudget: categories[cat].includeInBudget,
-                              newSub: '',
-                              type: type
-                          });
+                          setCategoryForm({ major: cat, subs: [...categories[cat].subs], includeInBudget: categories[cat].includeInBudget, newSub: '', type: type });
                           setIsCategoryModalOpen(true);
                       }}>
                           <Edit3 size={16}/>
@@ -695,10 +636,7 @@ export default function ExpenseApp() {
               </div>
           ))}
           <button 
-            onClick={() => {
-                setCategoryForm({ major: '', subs: [], includeInBudget: true, newSub: '', type: type });
-                setIsCategoryModalOpen(true);
-            }}
+            onClick={() => { setCategoryForm({ major: '', subs: [], includeInBudget: true, newSub: '', type: type }); setIsCategoryModalOpen(true); }}
             className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all"
           >
               <Plus size={20} className="mr-1"/> 新增類別
@@ -883,7 +821,6 @@ export default function ExpenseApp() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
-              
               {/* 帳號管理 */}
               <section>
                   <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center"><User size={20} className="mr-2 text-purple-400"/> 帳號</h2>
