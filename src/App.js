@@ -33,14 +33,14 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase Initialization ---
-// ★★★ 請將這裡的 Config 換成你自己的 (我使用了你提供的 firebase.js 內容) ★★★
+// ★★★ 請確認這裡的 Config 是您自己的 ★★★
 const firebaseConfig = {
-  apiKey: "AIzaSyB8HJSxbUYWPWt_LKoZMzQdSiA1gQMJvlA",
-  authDomain: "tourism-planning-e7e44.firebaseapp.com",
-  projectId: "tourism-planning-e7e44",
-  storageBucket: "tourism-planning-e7e44.firebasestorage.app",
-  messagingSenderId: "725312679774",
-  appId: "1:725312679774:web:93be49bdc30a4c5a71a9cf"
+  apiKey: "AIzaSyAuAZSgs-oUS7hmfsDKZyQNqpbSCiOUfik",
+  authDomain: "accounting-c6599.firebaseapp.com",
+  projectId: "accounting-c6599",
+  storageBucket: "accounting-c6599.firebasestorage.app",
+  messagingSenderId: "53340382920",
+  appId: "1:53340382920:web:ada671f7d3464ace5867fd"
 };
 
 // 防止重複初始化
@@ -159,7 +159,6 @@ export default function ExpenseApp() {
   const [statsRange, setStatsRange] = useState('month'); 
   const [statsType, setStatsType] = useState('expense'); 
   
-  // 預算狀態
   const [monthlyBudgets, setMonthlyBudgets] = useState({ '2025-12': 15000 }); 
   const [defaultBudget, setDefaultBudget] = useState(11000); 
 
@@ -168,7 +167,6 @@ export default function ExpenseApp() {
 
   const [detailConfig, setDetailConfig] = useState({ category: '', type: 'expense', parentView: 'daily', range: 'month' });
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
@@ -217,7 +215,6 @@ export default function ExpenseApp() {
       return () => unsubscribe();
   }, [user]);
 
-  // Load Settings from LocalStorage
   useEffect(() => {
       const savedEx = localStorage.getItem('expenseCategories');
       if (savedEx) setExpenseCategories(JSON.parse(savedEx));
@@ -887,7 +884,7 @@ export default function ExpenseApp() {
               </section>
 
               {/* 版本號 */}
-              <div className="text-center text-gray-400 text-xs py-4 fixed bottom-2 right-2">v2.0</div>
+              <div className="text-center text-gray-400 text-xs py-4 fixed bottom-2 right-2">v2.1</div>
           </div>
         </div>
       )}
