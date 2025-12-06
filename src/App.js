@@ -33,7 +33,6 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase Initialization ---
-// ★★★ 請確認這裡的 Config 是您自己的 ★★★
 const firebaseConfig = {
   apiKey: "AIzaSyAuAZSgs-oUS7hmfsDKZyQNqpbSCiOUfik",
   authDomain: "accounting-c6599.firebaseapp.com",
@@ -567,12 +566,45 @@ export default function ExpenseApp() {
         const text = evt.target.result;
         const newData = parseCSV(text);
         let count = 0;
+        
+        // 建立新的類別對象，避免重複更新 state
+        let updatedExpenseCats = { ...expenseCategories };
+        let updatedIncomeCats = { ...incomeCategories };
+        let hasCategoryUpdates = false;
+
         for (const item of newData) {
             const { id, ...data } = item; 
+            
+            // 檢查並匯入類別
+            const isExpense = data.type === 'expense';
+            const targetCats = isExpense ? updatedExpenseCats : updatedIncomeCats;
+            
+            if (!targetCats[data.majorCategory]) {
+                targetCats[data.majorCategory] = { 
+                    includeInBudget: isExpense ? data.includeInBudget : false, 
+                    subs: [] 
+                };
+                hasCategoryUpdates = true;
+            }
+
+            // 檢查子類別
+            if (data.hasSub && data.category !== data.majorCategory) {
+                if (!targetCats[data.majorCategory].subs.includes(data.category)) {
+                    targetCats[data.majorCategory].subs.push(data.category);
+                    hasCategoryUpdates = true;
+                }
+            }
+            
             await saveToFirestore({ ...data, date: new Date(data.date) });
             count++;
         }
-        alert(`成功匯入 ${count} 筆資料至雲端！`);
+
+        if (hasCategoryUpdates) {
+            setExpenseCategories(updatedExpenseCats);
+            setIncomeCategories(updatedIncomeCats);
+        }
+
+        alert(`成功匯入 ${count} 筆資料至雲端，並同步相關類別！`);
     };
     reader.readAsText(file);
   };
@@ -621,7 +653,13 @@ export default function ExpenseApp() {
                   </div>
                   <div className="flex items-center space-x-1">
                       <button className="p-2 text-gray-300 hover:text-gray-500" onClick={() => {
-                          setCategoryForm({ major: cat, subs: [...categories[cat].subs], includeInBudget: categories[cat].includeInBudget, newSub: '', type: type });
+                          setCategoryForm({ 
+                              major: cat, 
+                              subs: [...categories[cat].subs], 
+                              includeInBudget: categories[cat].includeInBudget,
+                              newSub: '',
+                              type: type
+                          });
                           setIsCategoryModalOpen(true);
                       }}>
                           <Edit3 size={16}/>
@@ -642,12 +680,12 @@ export default function ExpenseApp() {
   );
 
   return (
-    <div className="relative w-full h-screen max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
+    <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
       {/* 1. 明細頁 */}
       {currentView === 'daily' && (
-        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-10">
+        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300 relative">
+          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
              <div className="flex justify-between items-center mb-4">
                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
                <div className="flex flex-col items-center">
@@ -672,7 +710,7 @@ export default function ExpenseApp() {
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
              {Object.keys(groupedByDate).map(dateStr => (
@@ -884,7 +922,7 @@ export default function ExpenseApp() {
               </section>
 
               {/* 版本號 */}
-              <div className="text-center text-gray-400 text-xs py-4 fixed bottom-2 right-2">v2.1</div>
+              <div className="text-center text-gray-400 text-xs py-4">v2.2</div>
           </div>
         </div>
       )}
@@ -932,7 +970,10 @@ export default function ExpenseApp() {
                          <div className="flex-1">
                              <div className="flex justify-between items-center">
                                  <span className="font-bold text-gray-700 text-lg">{item.name}</span>
-                                 <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
+                                 <div className="flex items-center">
+                                     <span className="text-xs text-gray-400 mr-2">{(item.ratio * 100).toFixed(1)}%</span>
+                                     <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
+                                 </div>
                              </div>
                              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-1 overflow-hidden">
                                  <div className="h-full" style={{ width: `${item.ratio * 100}%`, backgroundColor: PASTEL_COLORS[idx % PASTEL_COLORS.length] }}></div>
@@ -1042,37 +1083,12 @@ export default function ExpenseApp() {
           </div>
       )}
 
-      {/* 預算編輯 Modal */}
-      {isBudgetEditOpen && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">設定本月預算</h3>
-                  <p className="text-sm text-gray-400 mb-6">{currentDate.getFullYear()}年 {currentDate.getMonth()+1}月</p>
-                  
-                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 mb-6 flex items-center">
-                      <span className="text-orange-400 mr-2 text-xl font-bold">$</span>
-                      <input 
-                        type="number" 
-                        className="bg-transparent text-2xl font-bold text-gray-800 w-full outline-none"
-                        value={tempBudget}
-                        onChange={(e) => setTempBudget(e.target.value)}
-                        autoFocus
-                      />
-                  </div>
-
-                  <div className="flex space-x-3">
-                      <button onClick={() => setIsBudgetEditOpen(false)} className="flex-1 py-3 text-gray-500 font-bold bg-gray-100 rounded-xl">取消</button>
-                      <button onClick={saveSpecificMonthBudget} className="flex-1 py-3 text-white font-bold bg-orange-500 rounded-xl shadow-lg shadow-orange-200">確認</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
       {/* 記帳 Modal */}
       {isModalOpen && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[100] flex justify-end flex-col">
-            <div className="bg-white rounded-t-[2.5rem] p-6 h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300">
-                <div className="flex justify-between items-center mb-6">
+            <div className="bg-white rounded-t-[2.5rem] p-6 h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden">
+                {/* Modal Header - Fixed */}
+                <div className="flex justify-between items-center mb-4 flex-none">
                     <button onClick={() => setIsModalOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={20}/></button>
                     {/* 收入/支出切換 Toggle */}
                     <div className="flex bg-gray-100 p-1 rounded-full">
@@ -1099,15 +1115,16 @@ export default function ExpenseApp() {
                     </button>
                 </div>
 
-                <div className="bg-orange-50 rounded-3xl p-6 mb-6 flex flex-col items-center justify-center border border-orange-100">
-                    <span className="text-gray-400 text-sm font-bold mb-1">金額</span>
-                    <div className="flex items-center">
-                        <span className="text-3xl text-orange-300 mr-2 font-bold">$</span>
-                        <input type="number" className="bg-transparent text-5xl font-bold text-gray-800 w-48 text-center outline-none" placeholder="0" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} />
+                {/* Input Area - Scrollable */}
+                <div className="flex-1 overflow-y-auto space-y-4 pb-20">
+                    <div className="bg-orange-50 rounded-3xl p-6 mb-2 flex flex-col items-center justify-center border border-orange-100">
+                        <span className="text-gray-400 text-sm font-bold mb-1">金額</span>
+                        <div className="flex items-center">
+                            <span className="text-3xl text-orange-300 mr-2 font-bold">$</span>
+                            <input type="number" className="bg-transparent text-5xl font-bold text-gray-800 w-48 text-center outline-none" placeholder="0" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} />
+                        </div>
                     </div>
-                </div>
 
-                <div className="space-y-4 flex-1 overflow-y-auto">
                     <div className="bg-white border border-gray-100 rounded-2xl p-2 flex items-center">
                         <div className="p-3 bg-blue-50 text-blue-400 rounded-xl mr-3"><Calendar size={20}/></div>
                         <input type="date" className="flex-1 outline-none text-gray-700 font-bold bg-transparent" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} />
@@ -1185,20 +1202,46 @@ export default function ExpenseApp() {
                         <div className="p-3 bg-yellow-50 text-yellow-400 rounded-xl mr-3"><Edit3 size={20}/></div>
                         <input type="text" placeholder="備註..." className="flex-1 outline-none text-gray-700 font-bold bg-transparent" value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} />
                     </div>
+
+                    {/* 刪除按鈕 */}
+                    {editingId && (
+                        <button 
+                            onClick={handleDeleteClick} 
+                            className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
+                        >
+                            <Trash2 size={20} className="mr-2"/> 
+                            {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
+                        </button>
+                    )}
                 </div>
-                
-                {/* 刪除按鈕 */}
-                {editingId && (
-                    <button 
-                        onClick={handleDeleteClick} 
-                        className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
-                    >
-                        <Trash2 size={20} className="mr-2"/> 
-                        {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
-                    </button>
-                )}
             </div>
         </div>
+      )}
+
+      {/* 預算編輯 Modal */}
+      {isBudgetEditOpen && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">設定本月預算</h3>
+                  <p className="text-sm text-gray-400 mb-6">{currentDate.getFullYear()}年 {currentDate.getMonth()+1}月</p>
+                  
+                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 mb-6 flex items-center">
+                      <span className="text-orange-400 mr-2 text-xl font-bold">$</span>
+                      <input 
+                        type="number" 
+                        className="bg-transparent text-2xl font-bold text-gray-800 w-full outline-none"
+                        value={tempBudget}
+                        onChange={(e) => setTempBudget(e.target.value)}
+                        autoFocus
+                      />
+                  </div>
+
+                  <div className="flex space-x-3">
+                      <button onClick={() => setIsBudgetEditOpen(false)} className="flex-1 py-3 text-gray-500 font-bold bg-gray-100 rounded-xl">取消</button>
+                      <button onClick={saveSpecificMonthBudget} className="flex-1 py-3 text-white font-bold bg-orange-500 rounded-xl shadow-lg shadow-orange-200">確認</button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* 類別設定 Modal */}
