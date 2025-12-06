@@ -10,7 +10,7 @@ import {
   Upload, FileText, ChevronDown, GripVertical, Coins,
   PlusCircle, MinusCircle, CornerDownRight, TrendingUp, TrendingDown,
   ToggleLeft, ToggleRight, ArrowLeft, LogIn, LogOut, User,
-  Plane, Coffee, Music, Book, Zap, Star, Smile, Sun, Umbrella, Gift, Loader2
+  Plane, Coffee, Music, Book, Zap, Star, Smile, Sun, Umbrella, Gift, Loader2, Copy, AlertTriangle
 } from 'lucide-react';
 
 // --- Firebase Imports ---
@@ -235,7 +235,6 @@ export default function ExpenseApp() {
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  // 新增 originalName 記錄舊名稱
   const [categoryForm, setCategoryForm] = useState({ major: '', originalName: '', subs: [], includeInBudget: true, newSub: '', type: 'expense', icon: 'Circle' });
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
@@ -243,11 +242,14 @@ export default function ExpenseApp() {
   const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
 
+  const [authError, setAuthError] = useState(null);
+
   // --- Firebase Logic ---
   useEffect(() => {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
           setUser(currentUser);
           if (!currentUser) setTransactions([]); 
+          if (currentUser) setAuthError(null);
       });
       return () => unsubscribe();
   }, []);
@@ -305,11 +307,23 @@ export default function ExpenseApp() {
   }, [defaultBudget]);
 
   const handleGoogleLogin = async () => {
+      setAuthError(null);
       try {
           await signInWithPopup(auth, new GoogleAuthProvider());
       } catch (error) {
           console.error("Login failed", error);
-          alert("登入失敗");
+          if (error.code === 'auth/unauthorized-domain') {
+            setAuthError({
+                type: 'domain',
+                message: `網域權限錯誤！請將此網域新增至 Firebase Console:`,
+                domain: window.location.hostname
+            });
+          } else {
+            setAuthError({
+                type: 'general',
+                message: `登入失敗: ${error.message}`
+            });
+          }
       }
   };
 
@@ -335,13 +349,11 @@ export default function ExpenseApp() {
       await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
   };
 
-  // 批量更新類別名稱
   const updateCategoryNameInFirestore = async (oldName, newName, type) => {
       if (!user) return;
       setIsSavingCategory(true);
       try {
           const collectionRef = collection(db, 'users', user.uid, 'transactions');
-          // 查詢該類別的所有交易
           const q = query(collectionRef, where("majorCategory", "==", oldName));
           const querySnapshot = await getDocs(q);
           
@@ -352,7 +364,6 @@ export default function ExpenseApp() {
               const docRef = doc(db, 'users', user.uid, 'transactions', document.id);
               const data = document.data();
               const updates = { majorCategory: newName };
-              // 如果子類別名稱跟大類別一樣(無子類別的情況)，同步更新
               if (data.category === oldName) {
                   updates.category = newName;
               }
@@ -362,7 +373,6 @@ export default function ExpenseApp() {
 
           if (count > 0) {
               await batch.commit();
-              console.log(`Updated ${count} transactions`);
           }
       } catch (e) {
           console.error("Error updating category names:", e);
@@ -578,38 +588,29 @@ export default function ExpenseApp() {
     setIsModalOpen(false);
   };
 
-  // 儲存類別 (含改名邏輯)
   const handleSaveCategory = async () => {
       if(!categoryForm.major) return;
       
       const setSettings = categoryForm.type === 'expense' ? setExpenseCategories : setIncomeCategories;
       const currentSettings = categoryForm.type === 'expense' ? expenseCategories : incomeCategories;
       
-      // 檢查是否為更名
       if (categoryForm.originalName && categoryForm.originalName !== categoryForm.major) {
           if (currentSettings[categoryForm.major]) {
               alert("該類別名稱已存在，請使用其他名稱");
               return;
           }
-          
-          // 先更新資料庫中的歷史紀錄 (等待完成)
           await updateCategoryNameInFirestore(categoryForm.originalName, categoryForm.major, categoryForm.type);
-          
-          // 再更新本地類別設定 (刪除舊的 key, 新增新的 key)
           setSettings(prev => {
               const newState = { ...prev };
-              const oldData = newState[categoryForm.originalName];
               delete newState[categoryForm.originalName]; 
               newState[categoryForm.major] = { 
-                  ...oldData,
+                  includeInBudget: categoryForm.includeInBudget,
                   subs: categoryForm.subs,
-                  icon: categoryForm.icon,
-                  includeInBudget: categoryForm.includeInBudget
+                  icon: categoryForm.icon
               };
               return newState;
           });
       } else {
-          // 一般更新 (無改名)
           setSettings(prev => ({
               ...prev,
               [categoryForm.major]: {
@@ -825,35 +826,38 @@ export default function ExpenseApp() {
   return (
     <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
-      {/* 1. 明細頁 (Fixed Header, Scroll Body) */}
+      {/* 1. 明細頁 (Fixed Header) */}
       {currentView === 'daily' && (
-        <div className="flex flex-col h-full">
-          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20">
-             <div className="flex justify-between items-center mb-4">
-               <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
-               <div className="flex flex-col items-center">
-                 <span className="text-2xl font-bold text-gray-800">{currentDate.getFullYear()}</span>
-                 <span className="text-sm font-bold text-orange-500 bg-orange-100 px-3 py-1 rounded-full mt-1">{currentDate.getMonth() + 1} 月</span>
-               </div>
-               <button onClick={() => changeMonth(1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronRight size={20}/></button>
-             </div>
-             <div className="bg-orange-50 p-4 rounded-2xl flex justify-between shadow-inner">
-               <div className="flex flex-col items-center flex-1 border-r border-orange-200">
-                 <span className="text-xs text-gray-400">收入</span>
-                 <span className="text-lg font-bold text-teal-500">{formatMoney(dailySummary.income)}</span>
-               </div>
-               <div className="flex flex-col items-center flex-1 border-r border-orange-200">
-                 <span className="text-xs text-gray-400">支出</span>
-                 <span className="text-lg font-bold text-rose-500">{formatMoney(dailySummary.expense)}</span>
-               </div>
-               <div className="flex flex-col items-center flex-1">
-                 <span className="text-xs text-gray-400">結餘</span>
-                 <span className="text-lg font-bold text-gray-700">{formatMoney(dailySummary.total)}</span>
-               </div>
+        <div className="flex flex-col h-full relative">
+          {/* 固定 Header */}
+          <div className="flex-none bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
+             <div className="px-6 pt-6 pb-2">
+                <div className="flex justify-between items-center mb-4">
+                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
+                <div className="flex flex-col items-center">
+                    <span className="text-2xl font-bold text-gray-800">{currentDate.getFullYear()}</span>
+                    <span className="text-sm font-bold text-orange-500 bg-orange-100 px-3 py-1 rounded-full mt-1">{currentDate.getMonth() + 1} 月</span>
+                </div>
+                <button onClick={() => changeMonth(1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronRight size={20}/></button>
+                </div>
+                <div className="bg-orange-50 p-4 rounded-2xl flex justify-between shadow-inner mb-2">
+                <div className="flex flex-col items-center flex-1 border-r border-orange-200">
+                    <span className="text-xs text-gray-400">收入</span>
+                    <span className="text-lg font-bold text-teal-500">{formatMoney(dailySummary.income)}</span>
+                </div>
+                <div className="flex flex-col items-center flex-1 border-r border-orange-200">
+                    <span className="text-xs text-gray-400">支出</span>
+                    <span className="text-lg font-bold text-rose-500">{formatMoney(dailySummary.expense)}</span>
+                </div>
+                <div className="flex flex-col items-center flex-1">
+                    <span className="text-xs text-gray-400">結餘</span>
+                    <span className="text-lg font-bold text-gray-700">{formatMoney(dailySummary.total)}</span>
+                </div>
+                </div>
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
              {Object.keys(groupedByDate).map(dateStr => (
@@ -892,7 +896,7 @@ export default function ExpenseApp() {
         </div>
       )}
 
-      {/* 2. 預算頁 */}
+      {/* 2. 預算頁 (Budget) */}
       {currentView === 'budget' && (
         <div className="flex flex-col h-full">
           <div className="flex-none px-6 pt-6 pb-4 bg-white rounded-b-3xl shadow-sm z-10">
@@ -983,7 +987,19 @@ export default function ExpenseApp() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
-              {/* 帳號管理 */}
+              {/* 帳號管理 (顯示錯誤提示) */}
+              {authError && (
+                  <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 text-rose-600 mb-4 flex items-start">
+                      <AlertTriangle className="mr-2 flex-none" size={20}/>
+                      <div className="text-sm whitespace-pre-wrap flex-1">{authError.message}</div>
+                      {authError.type === 'domain' && (
+                          <button onClick={() => navigator.clipboard.writeText(authError.domain)} className="ml-2 p-1 bg-white rounded border border-rose-200">
+                              <Copy size={14}/>
+                          </button>
+                      )}
+                  </div>
+              )}
+
               <section>
                   <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center"><User size={20} className="mr-2 text-purple-400"/> 帳號</h2>
                   <div className="bg-purple-50 p-4 rounded-3xl border border-purple-100">
@@ -1050,8 +1066,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.9</div>
+              {/* 版本號 (Fix: 在設定頁最下方) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.8</div>
           </div>
         </div>
       )}
