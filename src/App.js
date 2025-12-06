@@ -629,6 +629,7 @@ export default function ExpenseApp() {
             const isExpense = data.type === 'expense';
             const targetCats = isExpense ? updatedExpenseCats : updatedIncomeCats;
             
+            // 如果類別不存在，新增類別
             if (!targetCats[data.majorCategory]) {
                 targetCats[data.majorCategory] = { 
                     includeInBudget: isExpense ? data.includeInBudget : false, 
@@ -638,6 +639,7 @@ export default function ExpenseApp() {
                 hasCategoryUpdates = true;
             }
 
+            // 如果有子類別且尚未存在，新增子類別
             if (data.hasSub && data.category !== data.majorCategory) {
                 if (!targetCats[data.majorCategory].subs.includes(data.category)) {
                     targetCats[data.majorCategory].subs.push(data.category);
@@ -649,6 +651,7 @@ export default function ExpenseApp() {
             count++;
         }
 
+        // 一次性更新類別狀態
         if (hasCategoryUpdates) {
             setExpenseCategories(updatedExpenseCats);
             setIncomeCategories(updatedIncomeCats);
@@ -750,10 +753,13 @@ export default function ExpenseApp() {
   return (
     <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
-      {/* 1. 明細頁 */}
+      {/* 全域版本號 - 固定顯示在最右下角 */}
+      <div className="fixed bottom-1 right-1 text-[10px] text-gray-300 z-[60] pointer-events-none font-mono select-none">v2.5</div>
+
+      {/* 1. 明細頁 - 固定 Header (Flex-none) + 滾動 Body (Flex-1) */}
       {currentView === 'daily' && (
         <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300 relative">
-          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
+          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 relative">
              <div className="flex justify-between items-center mb-4">
                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
                <div className="flex flex-col items-center">
@@ -990,10 +996,6 @@ export default function ExpenseApp() {
                   <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-teal-400"/> 收入類別</h2>
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
-
-              {/* 版本號 (Fix: 顯示在App最下方) */}
-              <div className="fixed bottom-1 right-1 text-gray-300 text-[10px] z-50 pointer-events-none">v2.4</div>
-              <div className="h-10"></div> {/* Spacer for scroll */}
           </div>
         </div>
       )}
@@ -1182,12 +1184,12 @@ export default function ExpenseApp() {
           </div>
       )}
 
-      {/* 記帳 Modal */}
+      {/* 記帳 Modal - 修改為固定頭部 */}
       {isModalOpen && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[100] flex justify-end flex-col">
-            <div className="bg-white rounded-t-[2.5rem] p-6 h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden">
+            <div className="bg-white rounded-t-[2.5rem] h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden">
                 {/* Modal Header - Fixed */}
-                <div className="flex justify-between items-center mb-4 flex-none">
+                <div className="flex-none flex justify-between items-center mb-4 p-6 pb-2">
                     <button onClick={() => setIsModalOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-500"><X size={20}/></button>
                     {/* 收入/支出切換 Toggle */}
                     <div className="flex bg-gray-100 p-1 rounded-full">
@@ -1215,7 +1217,7 @@ export default function ExpenseApp() {
                 </div>
 
                 {/* Input Area - Scrollable */}
-                <div className="flex-1 overflow-y-auto space-y-4 pb-20">
+                <div className="flex-1 overflow-y-auto space-y-4 px-6 pb-10">
                     <div className="bg-orange-50 rounded-3xl p-6 mb-2 flex flex-col items-center justify-center border border-orange-100">
                         <span className="text-gray-400 text-sm font-bold mb-1">金額</span>
                         <div className="flex items-center">
@@ -1309,18 +1311,18 @@ export default function ExpenseApp() {
                         <div className="p-3 bg-yellow-50 text-yellow-400 rounded-xl mr-3"><Edit3 size={20}/></div>
                         <input type="text" placeholder="備註..." className="flex-1 outline-none text-gray-700 font-bold bg-transparent" value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} />
                     </div>
+
+                    {/* 刪除按鈕 */}
+                    {editingId && (
+                        <button 
+                            onClick={handleDeleteClick} 
+                            className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
+                        >
+                            <Trash2 size={20} className="mr-2"/> 
+                            {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
+                        </button>
+                    )}
                 </div>
-                
-                {/* 刪除按鈕 */}
-                {editingId && (
-                    <button 
-                        onClick={handleDeleteClick} 
-                        className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
-                    >
-                        <Trash2 size={20} className="mr-2"/> 
-                        {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
-                    </button>
-                )}
             </div>
         </div>
       )}
