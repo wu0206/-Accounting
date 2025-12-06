@@ -34,7 +34,6 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase Initialization ---
-// ★★★ 已更新為 accounting-c6599 的設定 ★★★
 const firebaseConfig = {
   apiKey: "AIzaSyAuAZSgs-oUS7hmfsDKZyQNqpbSCiOUfik",
   authDomain: "accounting-c6599.firebaseapp.com",
@@ -831,31 +830,16 @@ export default function ExpenseApp() {
                 <button onClick={() => changeMonth(1)} className="p-2 text-gray-400"><ChevronRight/></button>
             </div>
             
-            <div className="relative h-56 flex items-center justify-center">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={[{value: budgetStatus.totalActual}, {value: Math.max(0, budgetStatus.totalBudget - budgetStatus.totalActual)}]}
-                            cx="50%" cy="50%" innerRadius={70} outerRadius={90} startAngle={90} endAngle={-270}
-                            dataKey="value" stroke="none"
-                        >
-                            <Cell fill={budgetStatus.percent > 100 ? '#F43F5E' : '#34D399'} />
-                            <Cell fill="#F3F4F6" />
-                        </Pie>
-                    </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute flex flex-col items-center pointer-events-none">
-                    <div className="flex items-center text-sm text-gray-400 cursor-pointer pointer-events-auto" onClick={openBudgetEditModal}>
-                        <span>每月預算 {formatMoney(budgetStatus.totalBudget)}</span>
-                        <Edit3 size={12} className="ml-1"/>
-                    </div>
-                    <div className="flex flex-col items-center my-1">
-                        <span className={`text-4xl font-bold ${budgetStatus.percent > 100 ? 'text-rose-500' : 'text-gray-800'}`}>
-                            {formatMoney(Math.max(0, budgetStatus.remaining))}
-                        </span>
-                        <span className="text-xs text-gray-400">剩餘額度</span>
-                    </div>
+            {/* 移除了圓餅圖，改為純文字顯示 */}
+            <div className="flex flex-col items-center justify-center py-6 bg-orange-50 rounded-3xl border border-orange-100">
+                <div className="flex items-center text-sm text-gray-400 cursor-pointer pointer-events-auto mb-2" onClick={openBudgetEditModal}>
+                    <span>每月預算 {formatMoney(budgetStatus.totalBudget)}</span>
+                    <Edit3 size={12} className="ml-1"/>
                 </div>
+                <div className="text-4xl font-bold text-gray-800 mb-1">
+                    {formatMoney(Math.max(0, budgetStatus.remaining))}
+                </div>
+                <div className="text-xs text-gray-400">剩餘額度</div>
             </div>
           </div>
 
@@ -993,8 +977,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 (設定頁最下方) */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.6</div>
+              {/* 版本號 (設定頁最下方 - 紅框位置) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.7</div>
           </div>
         </div>
       )}
@@ -1019,18 +1003,14 @@ export default function ExpenseApp() {
                 <button onClick={() => statsRange === 'month' ? changeMonth(1) : (statsRange === 'year' ? changeYear(1) : null)} className={`text-gray-400 ${statsRange === 'all' && 'opacity-0 pointer-events-none'}`}><ChevronRight/></button>
             </div>
             
-            <div className="text-center mb-2 font-bold text-gray-700 text-lg">
-                {statsRange === 'all' ? '全部期間' : `${currentDate.getFullYear()}年 ${statsRange === 'month' ? `${currentDate.getMonth()+1}月` : ''}`} 總{statsType === 'expense' ? '支出' : '收入'}: {formatMoney(statsData.total)}
-            </div>
-            
-            <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={statsData.chartData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
-                            {statsData.chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={PASTEL_COLORS[index % PASTEL_COLORS.length]} stroke="none" />)}
-                        </Pie>
-                    </PieChart>
-                </ResponsiveContainer>
+            <div className="flex flex-col items-center justify-center py-4">
+                <span className="text-sm text-gray-400 mb-1">
+                    {statsRange === 'all' ? '全部期間' : `${currentDate.getFullYear()}年 ${statsRange === 'month' ? `${currentDate.getMonth()+1}月` : ''}`}
+                </span>
+                <span className={`text-3xl font-bold ${statsType === 'expense' ? 'text-rose-500' : 'text-teal-500'}`}>
+                    {formatMoney(statsData.total)}
+                </span>
+                <span className="text-xs text-gray-400 mt-1">總{statsType === 'expense' ? '支出' : '收入'}</span>
             </div>
           </div>
 
@@ -1183,7 +1163,7 @@ export default function ExpenseApp() {
           </div>
       )}
 
-      {/* 記帳 Modal */}
+      {/* 記帳 Modal - 固定頭部 */}
       {isModalOpen && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[100] flex justify-end flex-col">
             <div className="bg-white rounded-t-[2.5rem] h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden">
