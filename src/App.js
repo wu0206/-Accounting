@@ -635,52 +635,41 @@ export default function ExpenseApp() {
       setCategoryForm(prev => ({ ...prev, subs: prev.subs.filter(s => s !== sub) }));
   };
 
-  // 刪除類別 (安全檢查)
+  // 安全刪除邏輯
   const handleDeleteCategory = async (major, type) => {
-      // 1. 檢查是否登入 (僅檢查雲端資料，本地資料不檢查關聯)
-      let isUsed = false;
-      let count = 0;
+      if (!user) {
+          alert("請先登入");
+          return;
+      }
+      
+      setIsDeletingCategory(true); // 設定 loading 狀態
 
-      if (user) {
-          setIsDeletingCategory(true);
-          try {
-              const collectionRef = collection(db, 'users', user.uid, 'transactions');
-              // 檢查大類別是否被使用
-              const q = query(collectionRef, where("majorCategory", "==", major));
-              const querySnapshot = await getDocs(q);
-              
-              if (!querySnapshot.empty) {
-                  isUsed = true;
-                  count = querySnapshot.size;
-              }
-          } catch (e) {
-              console.error(e);
-              alert("檢查失敗，請檢查網路連線");
+      try {
+          // 1. 檢查是否有任何交易使用此類別
+          const collectionRef = collection(db, 'users', user.uid, 'transactions');
+          const q = query(collectionRef, where("majorCategory", "==", major));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+              alert(`無法刪除：分類「${major}」含有 ${querySnapshot.size} 筆交易紀錄。\n\n請先手動刪除或編輯這些紀錄，才能移除此分類。`);
               setIsDeletingCategory(false);
               return;
           }
-          setIsDeletingCategory(false);
-      } else {
-          // 未登入，檢查本地 transactions
-          const related = transactions.filter(t => t.majorCategory === major);
-          if (related.length > 0) {
-              isUsed = true;
-              count = related.length;
+
+          // 2. 如果沒有關聯交易，執行刪除 (僅更新本地設定)
+          if(window.confirm(`確定要刪除「${major}」這個類別嗎？`)) {
+              const setSettings = type === 'expense' ? setExpenseCategories : setIncomeCategories;
+              setSettings(prev => {
+                  const newState = { ...prev };
+                  delete newState[major];
+                  return newState;
+              });
           }
-      }
-
-      if (isUsed) {
-          alert(`無法刪除：分類「${major}」含有 ${count} 筆交易紀錄。\n\n請先刪除相關紀錄。`);
-          return;
-      }
-
-      if(window.confirm(`確定要刪除「${major}」這個類別嗎？`)) {
-          const setSettings = type === 'expense' ? setExpenseCategories : setIncomeCategories;
-          setSettings(prev => {
-              const newState = { ...prev };
-              delete newState[major];
-              return newState;
-          });
+      } catch (error) {
+          console.error("Delete check failed", error);
+          alert("刪除檢查失敗，請稍後再試。");
+      } finally {
+          setIsDeletingCategory(false);
       }
   };
 
@@ -810,7 +799,7 @@ export default function ExpenseApp() {
                         onClick={() => {
                             setCategoryForm({ 
                                 major: cat, 
-                                originalName: cat,
+                                originalName: cat, 
                                 subs: [...categories[cat].subs], 
                                 includeInBudget: categories[cat].includeInBudget,
                                 newSub: '',
@@ -877,9 +866,10 @@ export default function ExpenseApp() {
   return (
     <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
-      {/* 1. 明細頁 (Fixed Header) */}
+      {/* 1. 明細頁 (Fixed Header with flex-none + flex-1 scroll) */}
       {currentView === 'daily' && (
         <div className="flex flex-col h-full relative">
+          {/* 固定 Header (紅框部分) */}
           <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
              <div className="flex justify-between items-center mb-4">
                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
@@ -905,6 +895,7 @@ export default function ExpenseApp() {
              </div>
           </div>
 
+          {/* 滾動內容 (列表) */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
@@ -1035,7 +1026,7 @@ export default function ExpenseApp() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
-              {/* 帳號管理 */}
+              {/* 帳號管理 (顯示錯誤提示) */}
               {authError && (
                   <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 text-rose-600 mb-4 flex items-start">
                       <AlertTriangle className="mr-2 flex-none" size={20}/>
@@ -1114,7 +1105,7 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 */}
+              {/* 版本號 (Fix: 在設定頁最下方) */}
               <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.14</div>
           </div>
         </div>
@@ -1169,7 +1160,7 @@ export default function ExpenseApp() {
                              </div>
                          </div>
                      </div>
-                     {item.subs.length > 0 && (
+                     {item.subs.length > 0 && item.subs[0].name !== '其他' && (
                          <div className="pl-5 mt-2 space-y-1">
                              {item.subs.map((sub, sIdx) => (
                                  <div key={sIdx} className="flex justify-between text-sm text-gray-500">
@@ -1429,7 +1420,7 @@ export default function ExpenseApp() {
                     </div>
                 </div>
                 
-                {/* 刪除按鈕 */}
+                {/* 刪除按鈕 - 修正：確保只在編輯模式 (editingId 存在) 顯示 */}
                 {editingId && (
                     <div className="p-6 pt-0 mt-auto bg-white flex-none">
                         <button 
