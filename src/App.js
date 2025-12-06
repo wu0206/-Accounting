@@ -1021,7 +1021,19 @@ export default function ExpenseApp() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
-              {/* 帳號管理 */}
+              {/* 帳號管理 (顯示錯誤提示) */}
+              {authError && (
+                  <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 text-rose-600 mb-4 flex items-start">
+                      <AlertTriangle className="mr-2 flex-none" size={20}/>
+                      <div className="text-sm whitespace-pre-wrap flex-1">{authError.message}</div>
+                      {authError.type === 'domain' && (
+                          <button onClick={() => navigator.clipboard.writeText(authError.domain)} className="ml-2 p-1 bg-white rounded border border-rose-200">
+                              <Copy size={14}/>
+                          </button>
+                      )}
+                  </div>
+              )}
+
               <section>
                   <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center"><User size={20} className="mr-2 text-purple-400"/> 帳號</h2>
                   <div className="bg-purple-50 p-4 rounded-3xl border border-purple-100">
@@ -1088,8 +1100,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.12</div>
+              {/* 版本號 (Fix: 在設定頁最下方) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.13</div>
           </div>
         </div>
       )}
