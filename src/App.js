@@ -10,7 +10,7 @@ import {
   Upload, FileText, ChevronDown, GripVertical, Coins,
   PlusCircle, MinusCircle, CornerDownRight, TrendingUp, TrendingDown,
   ToggleLeft, ToggleRight, ArrowLeft, LogIn, LogOut, User,
-  Plane, Coffee, Music, Book, Zap, Star, Smile, Sun, Umbrella, Gift, Loader2, Copy, AlertTriangle
+  Plane, Coffee, Music, Book, Zap, Star, Smile, Sun, Umbrella, Gift, Loader2, Copy, AlertTriangle, CornerDownRight as SubIcon
 } from 'lucide-react';
 
 // --- Firebase Imports ---
@@ -238,7 +238,7 @@ export default function ExpenseApp() {
   const [categoryForm, setCategoryForm] = useState({ major: '', originalName: '', subs: [], includeInBudget: true, newSub: '', type: 'expense', icon: 'Circle' });
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [isDeletingCategory, setIsDeletingCategory] = useState(false); // 刪除類別 loading 狀態
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
   const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
@@ -635,41 +635,52 @@ export default function ExpenseApp() {
       setCategoryForm(prev => ({ ...prev, subs: prev.subs.filter(s => s !== sub) }));
   };
 
-  // 安全刪除邏輯
+  // 刪除類別 (安全檢查)
   const handleDeleteCategory = async (major, type) => {
-      if (!user) {
-          alert("請先登入");
-          return;
-      }
-      
-      setIsDeletingCategory(true); // 設定 loading 狀態
+      // 1. 檢查是否登入 (僅檢查雲端資料，本地資料不檢查關聯)
+      let isUsed = false;
+      let count = 0;
 
-      try {
-          // 1. 檢查是否有任何交易使用此類別
-          const collectionRef = collection(db, 'users', user.uid, 'transactions');
-          const q = query(collectionRef, where("majorCategory", "==", major));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-              alert(`無法刪除：分類「${major}」含有 ${querySnapshot.size} 筆交易紀錄。\n\n請先手動刪除或編輯這些紀錄，才能移除此分類。`);
+      if (user) {
+          setIsDeletingCategory(true);
+          try {
+              const collectionRef = collection(db, 'users', user.uid, 'transactions');
+              // 檢查大類別是否被使用
+              const q = query(collectionRef, where("majorCategory", "==", major));
+              const querySnapshot = await getDocs(q);
+              
+              if (!querySnapshot.empty) {
+                  isUsed = true;
+                  count = querySnapshot.size;
+              }
+          } catch (e) {
+              console.error(e);
+              alert("檢查失敗，請檢查網路連線");
               setIsDeletingCategory(false);
               return;
           }
-
-          // 2. 如果沒有關聯交易，執行刪除 (僅更新本地設定)
-          if(window.confirm(`確定要刪除「${major}」這個類別嗎？`)) {
-              const setSettings = type === 'expense' ? setExpenseCategories : setIncomeCategories;
-              setSettings(prev => {
-                  const newState = { ...prev };
-                  delete newState[major];
-                  return newState;
-              });
-          }
-      } catch (error) {
-          console.error("Delete check failed", error);
-          alert("刪除檢查失敗，請稍後再試。");
-      } finally {
           setIsDeletingCategory(false);
+      } else {
+          // 未登入，檢查本地 transactions
+          const related = transactions.filter(t => t.majorCategory === major);
+          if (related.length > 0) {
+              isUsed = true;
+              count = related.length;
+          }
+      }
+
+      if (isUsed) {
+          alert(`無法刪除：分類「${major}」含有 ${count} 筆交易紀錄。\n\n請先刪除相關紀錄。`);
+          return;
+      }
+
+      if(window.confirm(`確定要刪除「${major}」這個類別嗎？`)) {
+          const setSettings = type === 'expense' ? setExpenseCategories : setIncomeCategories;
+          setSettings(prev => {
+              const newState = { ...prev };
+              delete newState[major];
+              return newState;
+          });
       }
   };
 
@@ -780,24 +791,26 @@ export default function ExpenseApp() {
   const renderCategorySettings = (categories, type) => (
       <div className="space-y-3">
           {Object.keys(categories).map(cat => (
-              <div key={cat} className="flex items-center justify-between bg-white border border-gray-100 p-3 rounded-2xl shadow-sm">
-                  <div className="flex items-center">
-                      {type === 'expense' && (
-                          <button 
-                            onClick={() => handleToggleCategoryBudgetRule(cat)}
-                            className={`mr-3 transition-colors ${categories[cat].includeInBudget ? 'text-orange-500' : 'text-gray-300'}`}
-                          >
-                            {categories[cat].includeInBudget ? <ToggleRight size={28}/> : <ToggleLeft size={28}/>}
-                          </button>
-                      )}
-                      {type === 'income' && <div className="mr-3 text-teal-500"><TrendingUp size={24}/></div>}
+              <div key={cat} className="flex items-start justify-between bg-white border border-gray-100 p-3 rounded-2xl shadow-sm">
+                  <div className="flex items-start flex-1">
+                      <div className="mt-1 flex-none">
+                        {type === 'expense' && (
+                            <button 
+                                onClick={() => handleToggleCategoryBudgetRule(cat)}
+                                className={`mr-3 transition-colors ${categories[cat].includeInBudget ? 'text-orange-500' : 'text-gray-300'}`}
+                            >
+                                {categories[cat].includeInBudget ? <ToggleRight size={28}/> : <ToggleLeft size={28}/>}
+                            </button>
+                        )}
+                        {type === 'income' && <div className="mr-3 text-teal-500"><TrendingUp size={24}/></div>}
+                      </div>
                       
                       <div 
-                        className="cursor-pointer flex items-center" 
+                        className="cursor-pointer flex-1" 
                         onClick={() => {
                             setCategoryForm({ 
-                                major: cat,
-                                originalName: cat, 
+                                major: cat, 
+                                originalName: cat,
                                 subs: [...categories[cat].subs], 
                                 includeInBudget: categories[cat].includeInBudget,
                                 newSub: '',
@@ -808,20 +821,23 @@ export default function ExpenseApp() {
                         }}
                       >
                           <div className="flex items-center">
-                              <div className="scale-75 -ml-1">{getIcon(cat, categories)}</div>
-                              <span className={`font-bold ${categories[cat].includeInBudget || type==='income' ? 'text-gray-700' : 'text-gray-400'}`}>{cat}</span>
+                              <div className="scale-75 -ml-1 flex-none">{getIcon(cat, categories)}</div>
+                              <span className={`font-bold ml-2 ${categories[cat].includeInBudget || type==='income' ? 'text-gray-700' : 'text-gray-400'}`}>{cat}</span>
                           </div>
-                          {/* 子項目條列顯示 (Check user request 2) */}
+                          {/* 子項目條列顯示 (Modified) */}
                           {categories[cat].subs.length > 0 && (
-                              <div className="text-xs text-gray-400 ml-4 mt-1 flex flex-col">
+                              <div className="mt-2 ml-9 space-y-1 border-l-2 border-gray-100 pl-3">
                                   {categories[cat].subs.map((sub) => (
-                                      <span key={sub} className="mb-0.5 text-[10px]">• {sub}</span>
+                                      <div key={sub} className="text-xs text-gray-400 flex items-center">
+                                          <SubIcon size={12} className="mr-1 text-gray-300"/>
+                                          {sub}
+                                      </div>
                                   ))}
                               </div>
                           )}
                       </div>
                   </div>
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-1 flex-none ml-2">
                       <button className="p-2 text-gray-300 hover:text-gray-500" onClick={() => {
                           setCategoryForm({ 
                               major: cat, 
@@ -864,7 +880,6 @@ export default function ExpenseApp() {
       {/* 1. 明細頁 (Fixed Header) */}
       {currentView === 'daily' && (
         <div className="flex flex-col h-full relative">
-          {/* 固定 Header (紅框部分) */}
           <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
              <div className="flex justify-between items-center mb-4">
                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
@@ -890,7 +905,6 @@ export default function ExpenseApp() {
              </div>
           </div>
 
-          {/* 滾動內容 (列表) */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
@@ -1021,7 +1035,7 @@ export default function ExpenseApp() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-24">
-              {/* 帳號管理 (顯示錯誤提示) */}
+              {/* 帳號管理 */}
               {authError && (
                   <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 text-rose-600 mb-4 flex items-start">
                       <AlertTriangle className="mr-2 flex-none" size={20}/>
@@ -1100,8 +1114,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 (Fix: 在設定頁最下方) */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.13</div>
+              {/* 版本號 */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.14</div>
           </div>
         </div>
       )}
@@ -1155,7 +1169,7 @@ export default function ExpenseApp() {
                              </div>
                          </div>
                      </div>
-                     {item.subs.length > 0 && item.subs[0].name !== '其他' && (
+                     {item.subs.length > 0 && (
                          <div className="pl-5 mt-2 space-y-1">
                              {item.subs.map((sub, sIdx) => (
                                  <div key={sIdx} className="flex justify-between text-sm text-gray-500">
@@ -1417,13 +1431,15 @@ export default function ExpenseApp() {
                 
                 {/* 刪除按鈕 */}
                 {editingId && (
-                    <button 
-                        onClick={handleDeleteClick} 
-                        className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
-                    >
-                        <Trash2 size={20} className="mr-2"/> 
-                        {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
-                    </button>
+                    <div className="p-6 pt-0 mt-auto bg-white flex-none">
+                        <button 
+                            onClick={handleDeleteClick} 
+                            className={`w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
+                        >
+                            <Trash2 size={20} className="mr-2"/> 
+                            {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
