@@ -34,6 +34,7 @@ import {
 } from 'firebase/firestore';
 
 // --- Firebase Initialization ---
+// ★★★ 已更新為 accounting-c6599 的設定 ★★★
 const firebaseConfig = {
   apiKey: "AIzaSyAuAZSgs-oUS7hmfsDKZyQNqpbSCiOUfik",
   authDomain: "accounting-c6599.firebaseapp.com",
@@ -544,7 +545,7 @@ export default function ExpenseApp() {
           [categoryForm.major]: {
               includeInBudget: categoryForm.includeInBudget,
               subs: categoryForm.subs,
-              icon: categoryForm.icon // 保存圖示設定
+              icon: categoryForm.icon 
           }
       }));
       setIsCategoryModalOpen(false);
@@ -629,7 +630,7 @@ export default function ExpenseApp() {
             const isExpense = data.type === 'expense';
             const targetCats = isExpense ? updatedExpenseCats : updatedIncomeCats;
             
-            // 如果類別不存在，新增類別
+            // Update logic: Add missing categories
             if (!targetCats[data.majorCategory]) {
                 targetCats[data.majorCategory] = { 
                     includeInBudget: isExpense ? data.includeInBudget : false, 
@@ -639,7 +640,6 @@ export default function ExpenseApp() {
                 hasCategoryUpdates = true;
             }
 
-            // 如果有子類別且尚未存在，新增子類別
             if (data.hasSub && data.category !== data.majorCategory) {
                 if (!targetCats[data.majorCategory].subs.includes(data.category)) {
                     targetCats[data.majorCategory].subs.push(data.category);
@@ -651,7 +651,6 @@ export default function ExpenseApp() {
             count++;
         }
 
-        // 一次性更新類別狀態
         if (hasCategoryUpdates) {
             setExpenseCategories(updatedExpenseCats);
             setIncomeCategories(updatedIncomeCats);
@@ -753,13 +752,10 @@ export default function ExpenseApp() {
   return (
     <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
-      {/* 全域版本號 - 固定顯示在最右下角 */}
-      <div className="fixed bottom-1 right-1 text-[10px] text-gray-300 z-[60] pointer-events-none font-mono select-none">v2.5</div>
-
-      {/* 1. 明細頁 - 固定 Header (Flex-none) + 滾動 Body (Flex-1) */}
+      {/* 1. 明細頁 (Fixed Header) */}
       {currentView === 'daily' && (
-        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300 relative">
-          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20 relative">
+        <div className="flex flex-col h-full">
+          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20">
              <div className="flex justify-between items-center mb-4">
                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
                <div className="flex flex-col items-center">
@@ -784,7 +780,7 @@ export default function ExpenseApp() {
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
              {Object.keys(groupedByDate).map(dateStr => (
@@ -823,9 +819,9 @@ export default function ExpenseApp() {
         </div>
       )}
 
-      {/* 2. 預算頁 (Budget) */}
+      {/* 2. 預算頁 */}
       {currentView === 'budget' && (
-        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300">
+        <div className="flex flex-col h-full">
           <div className="flex-none px-6 pt-6 pb-4 bg-white rounded-b-3xl shadow-sm z-10">
             <div className="flex justify-between items-center mb-4">
                 <button onClick={() => changeMonth(-1)} className="p-2 text-gray-400"><ChevronLeft/></button>
@@ -924,7 +920,7 @@ export default function ExpenseApp() {
 
       {/* 3. 設定頁 (Settings) */}
       {currentView === 'settings' && (
-        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300 bg-white">
+        <div className="flex flex-col h-full bg-white">
           <div className="flex-none px-6 pt-8 pb-4 border-b border-gray-100">
               <h1 className="text-2xl font-bold text-gray-800">設定</h1>
           </div>
@@ -996,13 +992,16 @@ export default function ExpenseApp() {
                   <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-teal-400"/> 收入類別</h2>
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
+
+              {/* 版本號 (設定頁最下方) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.6</div>
           </div>
         </div>
       )}
 
       {/* 4. 統計頁 (Stats) */}
       {currentView === 'stats' && (
-        <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300">
+        <div className="flex flex-col h-full">
           <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-10">
             <div className="flex items-center justify-between mb-4">
                 <button onClick={() => statsRange === 'month' ? changeMonth(-1) : (statsRange === 'year' ? changeYear(-1) : null)} className={`text-gray-400 ${statsRange === 'all' && 'opacity-0 pointer-events-none'}`}><ChevronLeft/></button>
@@ -1109,7 +1108,7 @@ export default function ExpenseApp() {
                               <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                                   {dayTrans.map((t, idx) => (
                                       <div key={t.id} onClick={() => handleOpenEdit(t)} className={`flex items-center p-3 hover:bg-orange-50 cursor-pointer ${idx !== dayTrans.length -1 ? 'border-b border-gray-50' : ''}`}>
-                                          <div className="mr-3">{getIcon(t.majorCategory, t.type === 'expense' ? expenseCategories : incomeCategories)}</div>
+                                          <div className="mr-3">{getIcon(t.majorCategory)}</div>
                                           <div className="flex-1">
                                               <div className="flex items-center">
                                                   <span className="font-bold text-gray-700">{t.majorCategory}</span>
@@ -1184,7 +1183,7 @@ export default function ExpenseApp() {
           </div>
       )}
 
-      {/* 記帳 Modal - 修改為固定頭部 */}
+      {/* 記帳 Modal */}
       {isModalOpen && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[100] flex justify-end flex-col">
             <div className="bg-white rounded-t-[2.5rem] h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-hidden">
@@ -1311,18 +1310,18 @@ export default function ExpenseApp() {
                         <div className="p-3 bg-yellow-50 text-yellow-400 rounded-xl mr-3"><Edit3 size={20}/></div>
                         <input type="text" placeholder="備註..." className="flex-1 outline-none text-gray-700 font-bold bg-transparent" value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} />
                     </div>
-
-                    {/* 刪除按鈕 */}
-                    {editingId && (
-                        <button 
-                            onClick={handleDeleteClick} 
-                            className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
-                        >
-                            <Trash2 size={20} className="mr-2"/> 
-                            {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
-                        </button>
-                    )}
                 </div>
+                
+                {/* 刪除按鈕 */}
+                {editingId && (
+                    <button 
+                        onClick={handleDeleteClick} 
+                        className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
+                    >
+                        <Trash2 size={20} className="mr-2"/> 
+                        {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
+                    </button>
+                )}
             </div>
         </div>
       )}
