@@ -101,8 +101,6 @@ const ICON_COLORS = {
   'Circle': 'bg-gray-300',
 };
 
-// --- 類別定義 (加入 icon 欄位) ---
-
 const DEFAULT_EXPENSE_CATEGORIES = {
     '飲食': { subs: [], includeInBudget: true, icon: 'Utensils' },
     '居家': { subs: ['孝親費'], includeInBudget: false, icon: 'Home' }, 
@@ -129,21 +127,17 @@ const DEFAULT_INCOME_CATEGORIES = {
 // --- 工具函數 ---
 
 const getIconComponent = (iconName, customClass) => {
-  // 優先使用設定好的 iconName
   if (AVAILABLE_ICONS[iconName]) {
       return <div className={`w-10 h-10 rounded-2xl ${ICON_COLORS[iconName] || 'bg-gray-300'} shadow-sm flex items-center justify-center ${customClass}`}>{AVAILABLE_ICONS[iconName]}</div>;
   }
-  // Fallback: 如果沒有設定 iconName，嘗試用舊邏輯 (名稱匹配)
   return <div className="w-10 h-10 rounded-2xl bg-gray-300 shadow-sm flex items-center justify-center"><Circle className="w-full h-full p-1.5 text-white" /></div>;
 };
 
-// 舊的 getIcon 用於相容，現在主要邏輯已整合進上方
 const getIcon = (categoryName, categoriesSettings) => {
     let iconName = 'Circle';
     if (categoriesSettings && categoriesSettings[categoryName] && categoriesSettings[categoryName].icon) {
         iconName = categoriesSettings[categoryName].icon;
     } else {
-        // Fallback 舊邏輯
         const name = categoryName ? categoryName.toLowerCase() : '';
         if (name.includes('食') || name.includes('吃')) iconName = 'Utensils';
         else if (name.includes('車') || name.includes('通')) iconName = 'Car';
@@ -239,7 +233,7 @@ export default function ExpenseApp() {
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ major: '', subs: [], includeInBudget: true, newSub: '', type: 'expense', icon: 'Circle' });
-  const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false); // 新增：圖示選擇器開關
+  const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
 
   const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
@@ -518,7 +512,7 @@ export default function ExpenseApp() {
     const major = formData.majorCategory;
     const sub = formData.subCategory;
     if (!currentSettings[major]) {
-        setSettings(prev => ({ ...prev, [major]: { includeInBudget: formData.type === 'expense', subs: sub ? [sub] : [] } }));
+        setSettings(prev => ({ ...prev, [major]: { includeInBudget: formData.type === 'expense', subs: sub ? [sub] : [], icon: 'Circle' } }));
     } else if (sub && !currentSettings[major].subs.includes(sub)) {
         setSettings(prev => ({ ...prev, [major]: { ...prev[major], subs: [...prev[major].subs, sub] } }));
     }
@@ -639,7 +633,7 @@ export default function ExpenseApp() {
                 targetCats[data.majorCategory] = { 
                     includeInBudget: isExpense ? data.includeInBudget : false, 
                     subs: [],
-                    icon: 'Circle' // Default icon
+                    icon: 'Circle' 
                 };
                 hasCategoryUpdates = true;
             }
@@ -699,7 +693,6 @@ export default function ExpenseApp() {
                       <div 
                         className="cursor-pointer flex items-center" 
                         onClick={() => {
-                            // 點擊圖示或名稱開啟編輯
                             setCategoryForm({ 
                                 major: cat, 
                                 subs: [...categories[cat].subs], 
@@ -723,7 +716,6 @@ export default function ExpenseApp() {
                       </div>
                   </div>
                   <div className="flex items-center space-x-1">
-                      {/* 修改：點擊編輯按鈕也開啟相同的 modal */}
                       <button className="p-2 text-gray-300 hover:text-gray-500" onClick={() => {
                           setCategoryForm({ 
                               major: cat, 
@@ -999,8 +991,9 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 */}
-              <div className="text-center text-gray-400 text-xs py-4">v2.3</div>
+              {/* 版本號 (Fix: 顯示在App最下方) */}
+              <div className="fixed bottom-1 right-1 text-gray-300 text-[10px] z-50 pointer-events-none">v2.4</div>
+              <div className="h-10"></div> {/* Spacer for scroll */}
           </div>
         </div>
       )}
@@ -1048,7 +1041,10 @@ export default function ExpenseApp() {
                          <div className="flex-1">
                              <div className="flex justify-between items-center">
                                  <span className="font-bold text-gray-700 text-lg">{item.name}</span>
-                                 <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
+                                 <div className="flex items-center">
+                                     <span className="text-xs text-gray-400 mr-2">{(item.ratio * 100).toFixed(1)}%</span>
+                                     <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
+                                 </div>
                              </div>
                              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-1 overflow-hidden">
                                  <div className="h-full" style={{ width: `${item.ratio * 100}%`, backgroundColor: PASTEL_COLORS[idx % PASTEL_COLORS.length] }}></div>
