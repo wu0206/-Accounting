@@ -9,7 +9,8 @@ import {
   DollarSign, Briefcase, Heart, CheckCircle2, Circle, X, Edit3, Trash2, 
   Upload, FileText, ChevronDown, GripVertical, Coins,
   PlusCircle, MinusCircle, CornerDownRight, TrendingUp, TrendingDown,
-  ToggleLeft, ToggleRight, ArrowLeft, LogIn, LogOut, User
+  ToggleLeft, ToggleRight, ArrowLeft, LogIn, LogOut, User,
+  Plane, Coffee, Music, Book, Zap, Star, Smile, Sun, Umbrella, Gift
 } from 'lucide-react';
 
 // --- Firebase Imports ---
@@ -42,7 +43,6 @@ const firebaseConfig = {
   appId: "1:53340382920:web:ada671f7d3464ace5867fd"
 };
 
-// 防止重複初始化
 let app;
 let auth;
 let db;
@@ -54,55 +54,111 @@ try {
     console.error("Firebase init error", e);
 }
 
-// --- 類別定義 ---
+// --- 圖示庫定義 ---
+const AVAILABLE_ICONS = {
+  'Utensils': <Utensils className="w-full h-full p-1.5 text-white" />,
+  'Car': <Car className="w-full h-full p-1.5 text-white" />,
+  'ShoppingBag': <ShoppingBag className="w-full h-full p-1.5 text-white" />,
+  'Home': <Home className="w-full h-full p-1.5 text-white" />,
+  'Smartphone': <Smartphone className="w-full h-full p-1.5 text-white" />,
+  'Gamepad2': <Gamepad2 className="w-full h-full p-1.5 text-white" />,
+  'Briefcase': <Briefcase className="w-full h-full p-1.5 text-white" />,
+  'DollarSign': <DollarSign className="w-full h-full p-1.5 text-white" />,
+  'Heart': <Heart className="w-full h-full p-1.5 text-white" />,
+  'Plane': <Plane className="w-full h-full p-1.5 text-white" />,
+  'Coffee': <Coffee className="w-full h-full p-1.5 text-white" />,
+  'Music': <Music className="w-full h-full p-1.5 text-white" />,
+  'Book': <Book className="w-full h-full p-1.5 text-white" />,
+  'Zap': <Zap className="w-full h-full p-1.5 text-white" />,
+  'Star': <Star className="w-full h-full p-1.5 text-white" />,
+  'Smile': <Smile className="w-full h-full p-1.5 text-white" />,
+  'Sun': <Sun className="w-full h-full p-1.5 text-white" />,
+  'Umbrella': <Umbrella className="w-full h-full p-1.5 text-white" />,
+  'Gift': <Gift className="w-full h-full p-1.5 text-white" />,
+  'Circle': <Circle className="w-full h-full p-1.5 text-white" />,
+};
+
+const ICON_COLORS = {
+  'Utensils': 'bg-orange-300',
+  'Car': 'bg-blue-300',
+  'ShoppingBag': 'bg-pink-300',
+  'Home': 'bg-green-300',
+  'Smartphone': 'bg-purple-300',
+  'Gamepad2': 'bg-yellow-300',
+  'Briefcase': 'bg-teal-300',
+  'DollarSign': 'bg-red-300',
+  'Heart': 'bg-rose-300',
+  'Plane': 'bg-sky-300',
+  'Coffee': 'bg-amber-400',
+  'Music': 'bg-violet-300',
+  'Book': 'bg-indigo-300',
+  'Zap': 'bg-yellow-400',
+  'Star': 'bg-yellow-200',
+  'Smile': 'bg-lime-300',
+  'Sun': 'bg-orange-200',
+  'Umbrella': 'bg-blue-200',
+  'Gift': 'bg-red-200',
+  'Circle': 'bg-gray-300',
+};
+
+// --- 類別定義 (加入 icon 欄位) ---
 
 const DEFAULT_EXPENSE_CATEGORIES = {
-    '飲食': { subs: [], includeInBudget: true },
-    '居家': { subs: ['孝親費'], includeInBudget: false }, 
-    '課金': { subs: ['鳴潮', '崩鐵', '妮姬'], includeInBudget: true },
-    '其他-計預算': { subs: ['補正'], includeInBudget: true },
-    '其他-不計預算': { subs: ['HDMI分離器'], includeInBudget: false },
-    '汽車': { subs: [], includeInBudget: true },
-    '娛樂': { subs: ['拼圖框'], includeInBudget: true },
-    '東京遊': { subs: ['日本遊-其他', '日本遊-動漫', '日本遊-購物'], includeInBudget: false },
-    '日常用品': { subs: [], includeInBudget: true },
-    '交通': { subs: [], includeInBudget: true },
-    '電話網路': { subs: [], includeInBudget: true },
-    '美容美髮': { subs: [], includeInBudget: true },
-    '交際應酬': { subs: [], includeInBudget: true }
+    '飲食': { subs: [], includeInBudget: true, icon: 'Utensils' },
+    '居家': { subs: ['孝親費'], includeInBudget: false, icon: 'Home' }, 
+    '課金': { subs: ['鳴潮', '崩鐵', '妮姬'], includeInBudget: true, icon: 'Gamepad2' },
+    '其他-計預算': { subs: ['補正'], includeInBudget: true, icon: 'Circle' },
+    '其他-不計預算': { subs: ['HDMI分離器'], includeInBudget: false, icon: 'Circle' },
+    '汽車': { subs: [], includeInBudget: true, icon: 'Car' },
+    '娛樂': { subs: ['拼圖框'], includeInBudget: true, icon: 'Smile' },
+    '東京遊': { subs: ['日本遊-其他', '日本遊-動漫', '日本遊-購物'], includeInBudget: false, icon: 'Plane' },
+    '日常用品': { subs: [], includeInBudget: true, icon: 'ShoppingBag' },
+    '交通': { subs: [], includeInBudget: true, icon: 'Car' },
+    '電話網路': { subs: [], includeInBudget: true, icon: 'Smartphone' },
+    '美容美髮': { subs: [], includeInBudget: true, icon: 'Heart' },
+    '交際應酬': { subs: [], includeInBudget: true, icon: 'Coffee' }
 };
 
 const DEFAULT_INCOME_CATEGORIES = {
-    '工資': { subs: [] },
-    '獎金': { subs: [] },
-    '投資': { subs: [] },
-    '其他': { subs: [] }
+    '工資': { subs: [], icon: 'Briefcase' },
+    '獎金': { subs: [], icon: 'DollarSign' },
+    '投資': { subs: [], icon: 'TrendingUp' },
+    '其他': { subs: [], icon: 'Circle' }
 };
 
 // --- 工具函數 ---
 
-const getIcon = (categoryName) => {
-  if (!categoryName) return <Circle size={24} className="text-gray-400" />;
-  const name = categoryName.toLowerCase();
-  
-  const iconMap = [
-    { k: ['食', '吃', '餐', '飲'], c: 'bg-orange-300', i: <Utensils className="w-full h-full p-1.5 text-white" /> },
-    { k: ['車', '油', '通', '捷運'], c: 'bg-blue-300', i: <Car className="w-full h-full p-1.5 text-white" /> },
-    { k: ['購', '買', '品', '衣'], c: 'bg-pink-300', i: <ShoppingBag className="w-full h-full p-1.5 text-white" /> },
-    { k: ['居', '房', '電', '水', '孝親'], c: 'bg-green-300', i: <Home className="w-full h-full p-1.5 text-white" /> },
-    { k: ['網', '機', '訊'], c: 'bg-purple-300', i: <Smartphone className="w-full h-full p-1.5 text-white" /> },
-    { k: ['樂', '遊', '玩', '課', '鳴', '崩', '妮'], c: 'bg-yellow-300', i: <Gamepad2 className="w-full h-full p-1.5 text-white" /> },
-    { k: ['薪', '工', '獎', '收'], c: 'bg-teal-300', i: <Briefcase className="w-full h-full p-1.5 text-white" /> },
-    { k: ['投', '股', '金', '算'], c: 'bg-red-300', i: <DollarSign className="w-full h-full p-1.5 text-white" /> },
-    { k: ['美', '髮', '妝'], c: 'bg-rose-300', i: <Heart className="w-full h-full p-1.5 text-white" /> },
-  ];
-
-  const match = iconMap.find(item => item.k.some(key => name.includes(key)));
-  if (match) {
-    return <div className={`w-10 h-10 rounded-2xl ${match.c} shadow-sm flex items-center justify-center`}>{match.i}</div>;
+const getIconComponent = (iconName, customClass) => {
+  // 優先使用設定好的 iconName
+  if (AVAILABLE_ICONS[iconName]) {
+      return <div className={`w-10 h-10 rounded-2xl ${ICON_COLORS[iconName] || 'bg-gray-300'} shadow-sm flex items-center justify-center ${customClass}`}>{AVAILABLE_ICONS[iconName]}</div>;
   }
+  // Fallback: 如果沒有設定 iconName，嘗試用舊邏輯 (名稱匹配)
   return <div className="w-10 h-10 rounded-2xl bg-gray-300 shadow-sm flex items-center justify-center"><Circle className="w-full h-full p-1.5 text-white" /></div>;
 };
+
+// 舊的 getIcon 用於相容，現在主要邏輯已整合進上方
+const getIcon = (categoryName, categoriesSettings) => {
+    let iconName = 'Circle';
+    if (categoriesSettings && categoriesSettings[categoryName] && categoriesSettings[categoryName].icon) {
+        iconName = categoriesSettings[categoryName].icon;
+    } else {
+        // Fallback 舊邏輯
+        const name = categoryName ? categoryName.toLowerCase() : '';
+        if (name.includes('食') || name.includes('吃')) iconName = 'Utensils';
+        else if (name.includes('車') || name.includes('通')) iconName = 'Car';
+        else if (name.includes('購') || name.includes('買')) iconName = 'ShoppingBag';
+        else if (name.includes('居') || name.includes('房')) iconName = 'Home';
+        else if (name.includes('網') || name.includes('機')) iconName = 'Smartphone';
+        else if (name.includes('樂') || name.includes('遊') || name.includes('課')) iconName = 'Gamepad2';
+        else if (name.includes('薪') || name.includes('工')) iconName = 'Briefcase';
+        else if (name.includes('投') || name.includes('金')) iconName = 'DollarSign';
+        else if (name.includes('美')) iconName = 'Heart';
+        else if (name.includes('旅') || name.includes('飛')) iconName = 'Plane';
+    }
+    return getIconComponent(iconName);
+};
+
 
 const formatMoney = (amount) => new Intl.NumberFormat('zh-TW', { style: 'decimal', minimumFractionDigits: 0 }).format(amount);
 const formatDateForInput = (date) => date.toISOString().split('T')[0];
@@ -182,7 +238,8 @@ export default function ExpenseApp() {
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [categoryForm, setCategoryForm] = useState({ major: '', subs: [], includeInBudget: true, newSub: '', type: 'expense' });
+  const [categoryForm, setCategoryForm] = useState({ major: '', subs: [], includeInBudget: true, newSub: '', type: 'expense', icon: 'Circle' });
+  const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false); // 新增：圖示選擇器開關
 
   const [isBudgetEditOpen, setIsBudgetEditOpen] = useState(false);
   const [tempBudget, setTempBudget] = useState('');
@@ -492,7 +549,8 @@ export default function ExpenseApp() {
           ...prev,
           [categoryForm.major]: {
               includeInBudget: categoryForm.includeInBudget,
-              subs: categoryForm.subs
+              subs: categoryForm.subs,
+              icon: categoryForm.icon // 保存圖示設定
           }
       }));
       setIsCategoryModalOpen(false);
@@ -567,7 +625,6 @@ export default function ExpenseApp() {
         const newData = parseCSV(text);
         let count = 0;
         
-        // 建立新的類別對象，避免重複更新 state
         let updatedExpenseCats = { ...expenseCategories };
         let updatedIncomeCats = { ...incomeCategories };
         let hasCategoryUpdates = false;
@@ -575,19 +632,18 @@ export default function ExpenseApp() {
         for (const item of newData) {
             const { id, ...data } = item; 
             
-            // 檢查並匯入類別
             const isExpense = data.type === 'expense';
             const targetCats = isExpense ? updatedExpenseCats : updatedIncomeCats;
             
             if (!targetCats[data.majorCategory]) {
                 targetCats[data.majorCategory] = { 
                     includeInBudget: isExpense ? data.includeInBudget : false, 
-                    subs: [] 
+                    subs: [],
+                    icon: 'Circle' // Default icon
                 };
                 hasCategoryUpdates = true;
             }
 
-            // 檢查子類別
             if (data.hasSub && data.category !== data.majorCategory) {
                 if (!targetCats[data.majorCategory].subs.includes(data.category)) {
                     targetCats[data.majorCategory].subs.push(data.category);
@@ -639,9 +695,24 @@ export default function ExpenseApp() {
                           </button>
                       )}
                       {type === 'income' && <div className="mr-3 text-teal-500"><TrendingUp size={24}/></div>}
-                      <div>
+                      
+                      <div 
+                        className="cursor-pointer flex items-center" 
+                        onClick={() => {
+                            // 點擊圖示或名稱開啟編輯
+                            setCategoryForm({ 
+                                major: cat, 
+                                subs: [...categories[cat].subs], 
+                                includeInBudget: categories[cat].includeInBudget,
+                                newSub: '',
+                                type: type,
+                                icon: categories[cat].icon || 'Circle'
+                            });
+                            setIsCategoryModalOpen(true);
+                        }}
+                      >
                           <div className="flex items-center">
-                              <div className="scale-75 -ml-1">{getIcon(cat)}</div>
+                              <div className="scale-75 -ml-1">{getIcon(cat, categories)}</div>
                               <span className={`font-bold ${categories[cat].includeInBudget || type==='income' ? 'text-gray-700' : 'text-gray-400'}`}>{cat}</span>
                           </div>
                           {categories[cat].subs.length > 0 && (
@@ -652,13 +723,15 @@ export default function ExpenseApp() {
                       </div>
                   </div>
                   <div className="flex items-center space-x-1">
+                      {/* 修改：點擊編輯按鈕也開啟相同的 modal */}
                       <button className="p-2 text-gray-300 hover:text-gray-500" onClick={() => {
                           setCategoryForm({ 
                               major: cat, 
                               subs: [...categories[cat].subs], 
                               includeInBudget: categories[cat].includeInBudget,
                               newSub: '',
-                              type: type
+                              type: type,
+                              icon: categories[cat].icon || 'Circle'
                           });
                           setIsCategoryModalOpen(true);
                       }}>
@@ -671,7 +744,10 @@ export default function ExpenseApp() {
               </div>
           ))}
           <button 
-            onClick={() => { setCategoryForm({ major: '', subs: [], includeInBudget: true, newSub: '', type: type }); setIsCategoryModalOpen(true); }}
+            onClick={() => { 
+                setCategoryForm({ major: '', subs: [], includeInBudget: true, newSub: '', type: type, icon: 'Circle' }); 
+                setIsCategoryModalOpen(true); 
+            }}
             className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all"
           >
               <Plus size={20} className="mr-1"/> 新增類別
@@ -724,7 +800,7 @@ export default function ExpenseApp() {
                  <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                    {groupedByDate[dateStr].map((t, idx) => (
                      <div key={t.id} onClick={() => handleOpenEdit(t)} className={`flex items-center p-3 hover:bg-orange-50 cursor-pointer ${idx !== groupedByDate[dateStr].length -1 ? 'border-b border-gray-50' : ''}`}>
-                       <div className="mr-3">{getIcon(t.majorCategory)}</div>
+                       <div className="mr-3">{getIcon(t.majorCategory, t.type === 'expense' ? expenseCategories : incomeCategories)}</div>
                        <div className="flex-1">
                          <div className="flex items-center">
                             <span className="font-bold text-gray-700">{t.majorCategory}</span>
@@ -900,6 +976,8 @@ export default function ExpenseApp() {
                           <span className="text-yellow-400 mr-2">$</span>
                           <input 
                             type="number" 
+                            inputMode="decimal"
+                            pattern="[0-9]*"
                             className="bg-transparent text-right font-bold text-gray-700 outline-none w-24"
                             value={defaultBudget}
                             onChange={(e) => updateDefaultBudget(e.target.value)}
@@ -922,7 +1000,7 @@ export default function ExpenseApp() {
               </section>
 
               {/* 版本號 */}
-              <div className="text-center text-gray-400 text-xs py-4">v2.2</div>
+              <div className="text-center text-gray-400 text-xs py-4">v2.3</div>
           </div>
         </div>
       )}
@@ -970,10 +1048,7 @@ export default function ExpenseApp() {
                          <div className="flex-1">
                              <div className="flex justify-between items-center">
                                  <span className="font-bold text-gray-700 text-lg">{item.name}</span>
-                                 <div className="flex items-center">
-                                     <span className="text-xs text-gray-400 mr-2">{(item.ratio * 100).toFixed(1)}%</span>
-                                     <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
-                                 </div>
+                                 <span className="font-bold text-gray-800">{formatMoney(item.value)}</span>
                              </div>
                              <div className="w-full bg-gray-100 h-1.5 rounded-full mt-1 overflow-hidden">
                                  <div className="h-full" style={{ width: `${item.ratio * 100}%`, backgroundColor: PASTEL_COLORS[idx % PASTEL_COLORS.length] }}></div>
@@ -1036,7 +1111,7 @@ export default function ExpenseApp() {
                               <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                                   {dayTrans.map((t, idx) => (
                                       <div key={t.id} onClick={() => handleOpenEdit(t)} className={`flex items-center p-3 hover:bg-orange-50 cursor-pointer ${idx !== dayTrans.length -1 ? 'border-b border-gray-50' : ''}`}>
-                                          <div className="mr-3">{getIcon(t.majorCategory)}</div>
+                                          <div className="mr-3">{getIcon(t.majorCategory, t.type === 'expense' ? expenseCategories : incomeCategories)}</div>
                                           <div className="flex-1">
                                               <div className="flex items-center">
                                                   <span className="font-bold text-gray-700">{t.majorCategory}</span>
@@ -1083,6 +1158,34 @@ export default function ExpenseApp() {
           </div>
       )}
 
+      {/* 預算編輯 Modal */}
+      {isBudgetEditOpen && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">設定本月預算</h3>
+                  <p className="text-sm text-gray-400 mb-6">{currentDate.getFullYear()}年 {currentDate.getMonth()+1}月</p>
+                  
+                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 mb-6 flex items-center">
+                      <span className="text-orange-400 mr-2 text-xl font-bold">$</span>
+                      <input 
+                        type="number" 
+                        inputMode="decimal"
+                        pattern="[0-9]*"
+                        className="bg-transparent text-2xl font-bold text-gray-800 w-full outline-none"
+                        value={tempBudget}
+                        onChange={(e) => setTempBudget(e.target.value)}
+                        autoFocus
+                      />
+                  </div>
+
+                  <div className="flex space-x-3">
+                      <button onClick={() => setIsBudgetEditOpen(false)} className="flex-1 py-3 text-gray-500 font-bold bg-gray-100 rounded-xl">取消</button>
+                      <button onClick={saveSpecificMonthBudget} className="flex-1 py-3 text-white font-bold bg-orange-500 rounded-xl shadow-lg shadow-orange-200">確認</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* 記帳 Modal */}
       {isModalOpen && (
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[100] flex justify-end flex-col">
@@ -1121,7 +1224,15 @@ export default function ExpenseApp() {
                         <span className="text-gray-400 text-sm font-bold mb-1">金額</span>
                         <div className="flex items-center">
                             <span className="text-3xl text-orange-300 mr-2 font-bold">$</span>
-                            <input type="number" className="bg-transparent text-5xl font-bold text-gray-800 w-48 text-center outline-none" placeholder="0" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} />
+                            <input 
+                                type="number" 
+                                inputMode="decimal"
+                                pattern="[0-9]*"
+                                className="bg-transparent text-5xl font-bold text-gray-800 w-48 text-center outline-none" 
+                                placeholder="0" 
+                                value={formData.amount} 
+                                onChange={(e) => setFormData({...formData, amount: e.target.value})} 
+                            />
                         </div>
                     </div>
 
@@ -1146,7 +1257,7 @@ export default function ExpenseApp() {
                                     onClick={() => handleSelectMajorCategory(cat)}
                                     className={`flex flex-col items-center p-2 rounded-xl transition-colors ${formData.majorCategory === cat ? 'bg-orange-100 ring-2 ring-orange-200' : 'bg-white'}`}
                                 >
-                                    <div className="scale-75 mb-1">{getIcon(cat)}</div>
+                                    <div className="scale-75 mb-1">{getIcon(cat, getCurrentCategorySettings())}</div>
                                     <span className="text-[10px] font-bold text-gray-600 truncate w-full text-center">{cat}</span>
                                 </button>
                             ))}
@@ -1202,55 +1313,29 @@ export default function ExpenseApp() {
                         <div className="p-3 bg-yellow-50 text-yellow-400 rounded-xl mr-3"><Edit3 size={20}/></div>
                         <input type="text" placeholder="備註..." className="flex-1 outline-none text-gray-700 font-bold bg-transparent" value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} />
                     </div>
-
-                    {/* 刪除按鈕 */}
-                    {editingId && (
-                        <button 
-                            onClick={handleDeleteClick} 
-                            className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
-                        >
-                            <Trash2 size={20} className="mr-2"/> 
-                            {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
-                        </button>
-                    )}
                 </div>
+                
+                {/* 刪除按鈕 */}
+                {editingId && (
+                    <button 
+                        onClick={handleDeleteClick} 
+                        className={`mt-4 w-full py-4 font-bold rounded-2xl flex items-center justify-center border transition-all ${isDeleteConfirming ? 'bg-rose-500 text-white border-rose-600' : 'text-rose-500 bg-rose-50 border-rose-100 hover:bg-rose-100'}`}
+                    >
+                        <Trash2 size={20} className="mr-2"/> 
+                        {isDeleteConfirming ? "再次點擊以確認刪除" : "刪除這筆記錄"}
+                    </button>
+                )}
             </div>
         </div>
-      )}
-
-      {/* 預算編輯 Modal */}
-      {isBudgetEditOpen && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">設定本月預算</h3>
-                  <p className="text-sm text-gray-400 mb-6">{currentDate.getFullYear()}年 {currentDate.getMonth()+1}月</p>
-                  
-                  <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 mb-6 flex items-center">
-                      <span className="text-orange-400 mr-2 text-xl font-bold">$</span>
-                      <input 
-                        type="number" 
-                        className="bg-transparent text-2xl font-bold text-gray-800 w-full outline-none"
-                        value={tempBudget}
-                        onChange={(e) => setTempBudget(e.target.value)}
-                        autoFocus
-                      />
-                  </div>
-
-                  <div className="flex space-x-3">
-                      <button onClick={() => setIsBudgetEditOpen(false)} className="flex-1 py-3 text-gray-500 font-bold bg-gray-100 rounded-xl">取消</button>
-                      <button onClick={saveSpecificMonthBudget} className="flex-1 py-3 text-white font-bold bg-orange-500 rounded-xl shadow-lg shadow-orange-200">確認</button>
-                  </div>
-              </div>
-          </div>
       )}
 
       {/* 類別設定 Modal */}
       {isCategoryModalOpen && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">{categoryForm.major ? '編輯類別' : '新增類別'}</h3>
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex-none">{categoryForm.major ? '編輯類別' : '新增類別'}</h3>
                   
-                  <div className="space-y-4 mb-6">
+                  <div className="space-y-4 mb-6 flex-1 overflow-y-auto">
                       {!categoryForm.major && (
                           <div className="flex bg-gray-100 p-1 rounded-xl mb-2">
                               <button onClick={() => setCategoryForm({...categoryForm, type: 'expense'})} className={`flex-1 py-2 rounded-lg text-sm font-bold ${categoryForm.type === 'expense' ? 'bg-white shadow text-rose-500' : 'text-gray-400'}`}>支出</button>
@@ -1268,6 +1353,32 @@ export default function ExpenseApp() {
                             placeholder="例如: 飲食"
                             disabled={!!(categoryForm.type === 'expense' ? expenseCategories[categoryForm.major] : incomeCategories[categoryForm.major])} 
                           />
+                      </div>
+
+                      {/* 圖示選擇器 */}
+                      <div>
+                          <label className="text-xs text-gray-400 block mb-2">選擇圖示</label>
+                          <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl border border-gray-100 mb-2 cursor-pointer" onClick={() => setIsIconSelectorOpen(!isIconSelectorOpen)}>
+                              <div className="flex items-center">
+                                  <div className="scale-75 mr-2">{getIconComponent(categoryForm.icon)}</div>
+                                  <span className="text-sm font-bold text-gray-600">當前圖示</span>
+                              </div>
+                              <ChevronDown size={16} className="text-gray-400"/>
+                          </div>
+                          
+                          {isIconSelectorOpen && (
+                              <div className="grid grid-cols-5 gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 max-h-32 overflow-y-auto">
+                                  {Object.keys(AVAILABLE_ICONS).map(iconName => (
+                                      <div 
+                                        key={iconName} 
+                                        onClick={() => { setCategoryForm({...categoryForm, icon: iconName}); setIsIconSelectorOpen(false); }}
+                                        className={`p-1 rounded-lg cursor-pointer flex justify-center ${categoryForm.icon === iconName ? 'bg-orange-100 ring-1 ring-orange-300' : ''}`}
+                                      >
+                                          <div className="scale-75">{getIconComponent(iconName)}</div>
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
                       </div>
                       
                       <div>
@@ -1305,7 +1416,7 @@ export default function ExpenseApp() {
                       )}
                   </div>
 
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-3 flex-none">
                       <button onClick={() => setIsCategoryModalOpen(false)} className="flex-1 py-3 text-gray-500 font-bold bg-gray-100 rounded-xl">取消</button>
                       <button onClick={handleSaveCategory} className="flex-1 py-3 text-white font-bold bg-gray-800 rounded-xl">確認</button>
                   </div>
