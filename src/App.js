@@ -262,8 +262,10 @@ export default function ExpenseApp() {
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const transData = snapshot.docs.map(doc => ({
-              id: doc.id,
+              // 修正：將 id: doc.id 放在 ...doc.data() 之後
+              // 這樣即使 data 裡因為之前的 bug 存了 id: null，也會被正確的 doc.id 覆蓋
               ...doc.data(),
+              id: doc.id, 
               date: new Date(doc.data().date)
           }));
           transData.sort((a, b) => b.date - a.date);
@@ -338,10 +340,13 @@ export default function ExpenseApp() {
       const saveData = { ...data, date: data.date.toISOString() };
       
       if (data.id) {
+          // 編輯模式：解構出 id，只更新其他欄位
           const { id, ...rest } = saveData;
           await updateDoc(doc(db, 'users', user.uid, 'transactions', id), rest);
       } else {
-          await addDoc(collectionRef, saveData);
+          // 新增模式：修正！先移除 id (這時通常是 null)，避免寫入 id: null 到資料庫
+          const { id, ...cleanData } = saveData;
+          await addDoc(collectionRef, cleanData);
       }
   };
 
