@@ -664,6 +664,7 @@ export default function ExpenseApp() {
                   delete newState[major];
                   return newState;
               });
+              setIsCategoryModalOpen(false); // 刪除成功後關閉 Modal
           }
       } catch (error) {
           console.error("Delete check failed", error);
@@ -813,14 +814,13 @@ export default function ExpenseApp() {
                               <div className="scale-75 -ml-1 flex-none">{getIcon(cat, categories)}</div>
                               <span className={`font-bold ml-2 ${categories[cat].includeInBudget || type==='income' ? 'text-gray-700' : 'text-gray-400'}`}>{cat}</span>
                           </div>
-                          {/* 子項目條列顯示 (Modified) */}
+                          {/* 子項目 UI 優化 (Chips) */}
                           {categories[cat].subs.length > 0 && (
-                              <div className="mt-2 ml-9 space-y-1 border-l-2 border-gray-100 pl-3">
+                              <div className="mt-3 ml-11 flex flex-wrap gap-2">
                                   {categories[cat].subs.map((sub) => (
-                                      <div key={sub} className="text-xs text-gray-400 flex items-center">
-                                          <SubIcon size={12} className="mr-1 text-gray-300"/>
+                                      <span key={sub} className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-500 shadow-sm">
                                           {sub}
-                                      </div>
+                                      </span>
                                   ))}
                               </div>
                           )}
@@ -841,6 +841,7 @@ export default function ExpenseApp() {
                       }}>
                           <Edit3 size={16}/>
                       </button>
+                      {/* 列表中的刪除按鈕保留，方便快速操作 */}
                       <button 
                           className="p-2 text-rose-300 hover:text-rose-500" 
                           onClick={() => handleDeleteCategory(cat, type)}
@@ -1520,6 +1521,18 @@ export default function ExpenseApp() {
                                  <div className="bg-white w-5 h-5 rounded-full shadow-sm"></div>
                               </button>
                           </div>
+                      )}
+
+                      {/* 刪除按鈕 (只在編輯模式顯示) */}
+                      {categoryForm.originalName && (
+                          <button 
+                              onClick={() => {
+                                  handleDeleteCategory(categoryForm.originalName, categoryForm.type);
+                              }}
+                              className="w-full py-3 mt-4 border border-rose-100 text-rose-500 font-bold rounded-xl flex items-center justify-center hover:bg-rose-50 transition-colors"
+                          >
+                              <Trash2 size={18} className="mr-2"/> 刪除此類別
+                          </button>
                       )}
                   </div>
 
