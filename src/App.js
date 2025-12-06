@@ -826,37 +826,36 @@ export default function ExpenseApp() {
   return (
     <div className="relative w-full h-dvh max-w-md mx-auto bg-orange-50 overflow-hidden flex flex-col font-sans text-gray-700">
       
-      {/* 1. 明細頁 (Fixed Header) */}
+      {/* 1. 明細頁 (Fixed Header with flex-none + flex-1 scroll) */}
       {currentView === 'daily' && (
         <div className="flex flex-col h-full relative">
-          {/* 固定 Header */}
-          <div className="flex-none bg-white rounded-b-3xl shadow-sm z-20 sticky top-0">
-             <div className="px-6 pt-6 pb-2">
-                <div className="flex justify-between items-center mb-4">
-                <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
-                <div className="flex flex-col items-center">
-                    <span className="text-2xl font-bold text-gray-800">{currentDate.getFullYear()}</span>
-                    <span className="text-sm font-bold text-orange-500 bg-orange-100 px-3 py-1 rounded-full mt-1">{currentDate.getMonth() + 1} 月</span>
-                </div>
-                <button onClick={() => changeMonth(1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronRight size={20}/></button>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-2xl flex justify-between shadow-inner mb-2">
-                <div className="flex flex-col items-center flex-1 border-r border-orange-200">
-                    <span className="text-xs text-gray-400">收入</span>
-                    <span className="text-lg font-bold text-teal-500">{formatMoney(dailySummary.income)}</span>
-                </div>
-                <div className="flex flex-col items-center flex-1 border-r border-orange-200">
-                    <span className="text-xs text-gray-400">支出</span>
-                    <span className="text-lg font-bold text-rose-500">{formatMoney(dailySummary.expense)}</span>
-                </div>
-                <div className="flex flex-col items-center flex-1">
-                    <span className="text-xs text-gray-400">結餘</span>
-                    <span className="text-lg font-bold text-gray-700">{formatMoney(dailySummary.total)}</span>
-                </div>
-                </div>
+          {/* 固定 Header (紅框部分) */}
+          <div className="flex-none px-6 pt-6 pb-2 bg-white rounded-b-3xl shadow-sm z-20">
+             <div className="flex justify-between items-center mb-4">
+               <button onClick={() => changeMonth(-1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronLeft size={20}/></button>
+               <div className="flex flex-col items-center">
+                 <span className="text-2xl font-bold text-gray-800">{currentDate.getFullYear()}</span>
+                 <span className="text-sm font-bold text-orange-500 bg-orange-100 px-3 py-1 rounded-full mt-1">{currentDate.getMonth() + 1} 月</span>
+               </div>
+               <button onClick={() => changeMonth(1)} className="p-2 bg-orange-100 rounded-full text-orange-600 hover:bg-orange-200"><ChevronRight size={20}/></button>
+             </div>
+             <div className="bg-orange-50 p-4 rounded-2xl flex justify-between shadow-inner">
+               <div className="flex flex-col items-center flex-1 border-r border-orange-200">
+                 <span className="text-xs text-gray-400">收入</span>
+                 <span className="text-lg font-bold text-teal-500">{formatMoney(dailySummary.income)}</span>
+               </div>
+               <div className="flex flex-col items-center flex-1 border-r border-orange-200">
+                 <span className="text-xs text-gray-400">支出</span>
+                 <span className="text-lg font-bold text-rose-500">{formatMoney(dailySummary.expense)}</span>
+               </div>
+               <div className="flex flex-col items-center flex-1">
+                 <span className="text-xs text-gray-400">結餘</span>
+                 <span className="text-lg font-bold text-gray-700">{formatMoney(dailySummary.total)}</span>
+               </div>
              </div>
           </div>
 
+          {/* 滾動內容 (列表) */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-24 scroll-smooth">
              {(!user) && <div className="text-center text-gray-400 mt-10">請先至「設定」頁面登入</div>}
              {user && Object.keys(groupedByDate).length === 0 && <div className="text-center text-gray-400 mt-10">本月沒有記錄 (´• ω •`)</div>}
@@ -1067,7 +1066,7 @@ export default function ExpenseApp() {
               </section>
 
               {/* 版本號 (Fix: 在設定頁最下方) */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.8</div>
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.9</div>
           </div>
         </div>
       )}
@@ -1126,7 +1125,12 @@ export default function ExpenseApp() {
                              {item.subs.map((sub, sIdx) => (
                                  <div key={sIdx} className="flex justify-between text-sm text-gray-500">
                                      <span>• {sub.name}</span>
-                                     <span>{formatMoney(sub.value)}</span>
+                                     <div className="flex items-center">
+                                         <span className="text-[10px] text-gray-300 mr-2">
+                                             {item.value > 0 ? Math.round((sub.value / item.value) * 100) : 0}%
+                                         </span>
+                                         <span>{formatMoney(sub.value)}</span>
+                                     </div>
                                  </div>
                              ))}
                          </div>
@@ -1381,7 +1385,7 @@ export default function ExpenseApp() {
                     </div>
                 </div>
                 
-                {/* 刪除按鈕 */}
+                {/* 刪除按鈕 - 修正：確保只在編輯模式 (editingId 存在) 顯示 */}
                 {editingId && (
                     <button 
                         onClick={handleDeleteClick} 
