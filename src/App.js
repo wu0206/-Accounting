@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip 
 } from 'recharts';
@@ -245,6 +245,9 @@ export default function ExpenseApp() {
 
   const [authError, setAuthError] = useState(null);
 
+  // --- v3.0 Feature: Auto Focus Ref ---
+  const amountInputRef = useRef(null);
+
   // --- Firebase Logic ---
   useEffect(() => {
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -262,8 +265,7 @@ export default function ExpenseApp() {
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const transData = snapshot.docs.map(doc => ({
-              // 修正：將 id: doc.id 放在 ...doc.data() 之後
-              // 這樣即使 data 裡因為之前的 bug 存了 id: null，也會被正確的 doc.id 覆蓋
+              // 修正邏輯：將 id: doc.id 放在 ...doc.data() 之後
               ...doc.data(),
               id: doc.id, 
               date: new Date(doc.data().date)
@@ -290,6 +292,20 @@ export default function ExpenseApp() {
       const savedDefault = localStorage.getItem('defaultBudget');
       if (savedDefault) setDefaultBudget(parseInt(savedDefault));
   }, []);
+
+  // --- v3.0 Feature: Auto Focus Effect ---
+  // 當 Modal 開啟時，自動聚焦到金額輸入框
+  useEffect(() => {
+      if (isModalOpen) {
+          // 設定微小的延遲，確保動畫執行完畢後再 Focus，確保手機鍵盤順利彈出
+          const timer = setTimeout(() => {
+              if (amountInputRef.current) {
+                  amountInputRef.current.focus();
+              }
+          }, 100); 
+          return () => clearTimeout(timer);
+      }
+  }, [isModalOpen]);
 
   useEffect(() => {
       if (Object.keys(expenseCategories).length > 0) 
@@ -344,7 +360,7 @@ export default function ExpenseApp() {
           const { id, ...rest } = saveData;
           await updateDoc(doc(db, 'users', user.uid, 'transactions', id), rest);
       } else {
-          // 新增模式：修正！先移除 id (這時通常是 null)，避免寫入 id: null 到資料庫
+          // 新增模式：先移除 id，避免寫入 id: null 到資料庫
           const { id, ...cleanData } = saveData;
           await addDoc(collectionRef, cleanData);
       }
@@ -1111,8 +1127,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 (Fix: 在設定頁最下方) */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v2.14</div>
+              {/* 版本號 (v3.0) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v3.0</div>
           </div>
         </div>
       )}
@@ -1336,6 +1352,7 @@ export default function ExpenseApp() {
                         <div className="flex items-center">
                             <span className="text-3xl text-orange-300 mr-2 font-bold">$</span>
                             <input 
+                                ref={amountInputRef}
                                 type="number" 
                                 inputMode="decimal"
                                 pattern="[0-9]*"
