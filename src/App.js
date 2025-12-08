@@ -158,7 +158,15 @@ const getIcon = (categoryName, categoriesSettings) => {
 
 
 const formatMoney = (amount) => new Intl.NumberFormat('zh-TW', { style: 'decimal', minimumFractionDigits: 0 }).format(amount);
-const formatDateForInput = (date) => date.toISOString().split('T')[0];
+
+// Fix: 使用本地時間代替 UTC，解決 UTC+8 早上8點前日期會少一天的問題
+const formatDateForInput = (date) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getMonthKey = (date) => `${date.getFullYear()}-${date.getMonth() + 1}`;
 
 const parseCSV = (csv) => {
@@ -1127,8 +1135,8 @@ export default function ExpenseApp() {
                   {renderCategorySettings(incomeCategories, 'income')}
               </section>
 
-              {/* 版本號 (v3.0) */}
-              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v3.0</div>
+              {/* 版本號 (Fix: 在設定頁最下方) */}
+              <div className="text-center text-gray-300 text-xs pt-8 pb-4 font-mono">v3.1</div>
           </div>
         </div>
       )}
